@@ -32,6 +32,13 @@ export class NativePayController {
     return this.nativePayService.confirmPayment(body.orderNo, body.tradeNo);
   }
 
+
+  @Post('sandbox-confirm')
+  @ApiOperation({ summary: 'Sandbox: confirm payment for testing (no auth required)' })
+  async sandboxConfirm(@Body() body: { orderNo: string }) {
+    return this.nativePayService.confirmPayment(body.orderNo, 'SANDBOX_' + Date.now());
+  }
+
   @Post('test-pay')
   @ApiOperation({ summary: 'Quick test pay entry without signature for demo' })
   async testPay(@Body() body: { amount?: number; productName?: string }, @Req() req: Request) {

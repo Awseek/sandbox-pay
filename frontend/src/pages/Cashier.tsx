@@ -183,8 +183,8 @@ export default function Cashier() {
             WeiPay 收银台
           </div>
           <div className="flex items-center gap-2 text-xs text-muted">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            安全支付
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            沙盒模式
           </div>
         </div>
       </header>
@@ -313,16 +313,39 @@ export default function Cashier() {
             </div>
           )}
 
-          {/* 如果既没有二维码也没有银行信息 */}
+          {/* 沙盒模式 - 无真实支付方式 */}
           {!hasQrCode && !hasBankInfo && (
             <div className="card p-8 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-7 h-7" />
               </div>
-              <h3 className="font-semibold text-foreground mb-2">支付方式配置中</h3>
-              <p className="text-sm text-muted">
-                管理员尚未配置收款信息，请联系客服完成支付。
+              <h3 className="font-semibold text-foreground mb-2">沙盒模式</h3>
+              <p className="text-sm text-muted mb-4">
+                当前为测试环境，支付功能仅供演示。
               </p>
+              <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 text-sm text-blue-500 mb-4">
+                此订单不会产生真实扣款
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch('/api/native-pay/sandbox-confirm', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ orderNo: info.orderNo }),
+                    });
+                    const json = await res.json();
+                    if (json.code === 200) {
+                      fetchInfo(); // 刷新状态
+                    }
+                  } catch (err) {
+                    console.error('Sandbox confirm error:', err);
+                  }
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition-colors"
+              >
+                模拟支付完成
+              </button>
               <div className="mt-4 p-3 rounded-xl bg-surface text-xs font-mono text-muted">
                 订单号: {info.orderNo}
               </div>
