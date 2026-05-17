@@ -1,0 +1,56 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpwd}
+      MYSQL_DATABASE: ${DB_DATABASE:-wepay_db}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-rootpwd}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpwd}
+      DB_DATABASE: ${DB_DATABASE:-wepay_db}
+      DB_SYNCHRONIZE: "false"
+      DB_LOGGING: "false"
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      GATEWAY_SECRET: ${GATEWAY_SECRET:-change-me-in-production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      ENABLE_SANDBOX: ${ENABLE_SANDBOX:-false}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_SERVER_URL: ${ALIPAY_SERVER_URL:-https://openapi-sandbox.dl.alipaydev.com/gateway.do}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+    expose:
+      - "3000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  db_data:

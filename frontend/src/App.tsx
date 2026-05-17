@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Cashier from './pages/Cashier'
+import MobilePay from './pages/MobilePay'
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/cashier" element={<Cashier />} />
+        <Route path="/mobile-pay" element={<MobilePay />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

@@ -175,3 +175,10 @@ h1, h2, h3, h4, h5, h6 {
   background-color: var(--accent);
   color: #ffffff;
 }
+
+/* 修复 HeroUI Table 带有表头时，tbody 首行单元格不需要顶部圆角，避免与表头底部冲突 */
+.table__body tr:first-child td:first-child,
+.table__body tr:first-child td:last-child {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}

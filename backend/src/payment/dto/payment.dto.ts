@@ -1,5 +1,22 @@
-import { IsString, IsNumber, IsOptional, Min, IsUrl } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, IsUrl, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+
+export class RefundDto {
+  @ApiProperty({ description: 'Original WeiPay orderNo' })
+  @IsString()
+  orderNo: string;
+
+  @ApiProperty({ example: 10, description: 'Refund amount (CNY for native/alipay, foreign currency for paypal)' })
+  @IsNumber()
+  @Min(0.01)
+  amount: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  reason?: string;
+}
 
 export class CreatePaymentDto {
   @ApiProperty({ example: 100 })

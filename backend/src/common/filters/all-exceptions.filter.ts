@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { redact } from '../logging/redact';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -26,8 +27,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
+    // Redact sensitive fields before they hit any log sink.
+    const safeMessage = redact(message);
     this.logger.error(
-      `Http Status: ${status} Error Message: ${JSON.stringify(message)}`,
+      `Http Status: ${status} Error Message: ${JSON.stringify(safeMessage)}`,
       exception instanceof Error ? exception.stack : '',
     );
 

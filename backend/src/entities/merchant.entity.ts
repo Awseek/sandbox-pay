@@ -11,8 +11,8 @@ export class Merchant {
   @Column()
   name: string;
 
+  // `unique: true` already creates a unique index — no extra `@Index()` needed.
   @Column({ unique: true })
-  @Index()
   appKey: string;
 
   @Column()

@@ -1,8 +1,22 @@
-import { Controller, Get, Post, Body, Query, Res } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
+import type { Response as ExpressResponse } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
+interface SsoInner {
+  code?: number;
+  data?: { username?: string };
+}
+
+interface SsoValidateResponse extends SsoInner {
+  // we29.cn TransformInterceptor wraps the real payload one level deeper.
+  data?: SsoInner['data'];
+}
+
+/**
+ * The single auth entry point. There is no local password login by design —
+ * all authentication goes through we29.cn SSO. See {@link AuthService}.
+ */
 @ApiTags('Auth')
 @Controller('api/auth')
 export class AuthController {
@@ -12,45 +26,29 @@ export class AuthController {
   @ApiOperation({ summary: 'SSO callback from we29.cn' })
   async ssoCallback(
     @Query('sso_token') ssoToken: string,
-    @Query('sso_username') ssoUsername: string,
-    @Query('state') state: string,
-    @Res() res: any,
+    @Res() res: ExpressResponse,
   ) {
+    const frontendUrl = process.env.FRONTEND_URL || 'https://pay.we29.cn';
     try {
-      // 验证 we29.cn 的 SSO token
+      // Validate the SSO token against we29.cn — this is the ONLY trust
+      // anchor for issuing a local JWT.
       const we29Res = await fetch(
         `https://we29.cn/api/auth/sso/validate?token=${encodeURIComponent(ssoToken)}`,
       );
-      const we29Data = await we29Res.json() as any;
+      const we29Data = (await we29Res.json()) as { code?: number; data?: SsoInner } & SsoInner;
 
-      // TransformInterceptor wraps in {code:0, data:{code:200, data:{username}}}
-      const inner = we29Data?.data || we29Data;
-      if (inner?.code === 200 && inner?.data) {
-        const { username } = inner.data;
-        // 同步用户到本地并生成 token（无密码模式）
-        const result = await this.authService.syncLogin({ username, password: '' });
-        // 重定向回前端，带上 token
-        const frontendUrl = process.env.FRONTEND_URL || 'https://pay.we29.cn';
-        res.redirect(`${frontendUrl}/login?sso_token=${result.token}&sso_username=${encodeURIComponent(username)}`);
-      } else {
-        const frontendUrl = process.env.FRONTEND_URL || 'https://pay.we29.cn';
-        res.redirect(`${frontendUrl}/login?error=sso_failed`);
+      // we29.cn TransformInterceptor wraps payloads in {code:0, data:{code:200, data:{username}}}
+      const inner: SsoInner = (we29Data?.data as SsoInner) ?? we29Data;
+      const username = inner?.data?.username;
+      if (inner?.code !== 200 || !username) {
+        return res.redirect(`${frontendUrl}/login?error=sso_failed`);
       }
-    } catch (err) {
-      const frontendUrl = process.env.FRONTEND_URL || 'https://pay.we29.cn';
+      const result = await this.authService.issueSsoToken(username);
+      res.redirect(
+        `${frontendUrl}/login?sso_token=${result.token}&sso_username=${encodeURIComponent(username)}`,
+      );
+    } catch {
       res.redirect(`${frontendUrl}/login?error=sso_error`);
     }
-  }
-
-  @Post('sync-login')
-  @ApiOperation({ summary: 'Sync login from we29.cn (auto-create local user)' })
-  async syncLogin(@Body() dto: LoginDto) {
-    return this.authService.syncLogin(dto);
-  }
-
-  @Post('login')
-  @ApiOperation({ summary: 'Admin login' })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
   }
 }

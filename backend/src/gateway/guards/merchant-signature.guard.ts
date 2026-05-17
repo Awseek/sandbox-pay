@@ -8,6 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from '../../entities/merchant.entity';
 import { SignatureService } from '../../common/services/signature.service';
+import { EncryptionService } from '../../common/services/encryption.service';
+import { NonceStore } from '../../common/services/nonce-store.service';
+
+const TIMESTAMP_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const NONCE_TTL_MS = TIMESTAMP_WINDOW_MS + 60 * 1000; // window + small slack
 
 @Injectable()
 export class MerchantSignatureGuard implements CanActivate {
@@ -15,6 +20,8 @@ export class MerchantSignatureGuard implements CanActivate {
     @InjectRepository(Merchant)
     private merchantRepository: Repository<Merchant>,
     private signatureService: SignatureService,
+    private encryptionService: EncryptionService,
+    private nonceStore: NonceStore,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -31,21 +38,33 @@ export class MerchantSignatureGuard implements CanActivate {
     const merchant = await this.merchantRepository.findOne({
       where: { appKey, isActive: true },
     });
-
     if (!merchant) {
       throw new UnauthorizedException('Invalid AppKey or inactive merchant');
     }
 
-    // Simple time check (5 minutes window)
+    // Time window check (5 minutes)
     const now = Date.now();
     const requestTime = parseInt(timestamp, 10);
-    if (isNaN(requestTime) || Math.abs(now - requestTime) > 300000) {
+    if (isNaN(requestTime) || Math.abs(now - requestTime) > TIMESTAMP_WINDOW_MS) {
       throw new UnauthorizedException('Timestamp expired or invalid');
     }
 
-    const bodyStr = request.method === 'GET' ? request.query.orderNo || '' : JSON.stringify(request.body);
+    // Replay protection: nonce must be unique within the time window, scoped per merchant
+    const nonceKey = `${appKey}:${nonce}`;
+    if (!this.nonceStore.tryConsume(nonceKey, NONCE_TTL_MS)) {
+      throw new UnauthorizedException('Duplicate nonce — possible replay');
+    }
+
+    // Canonical payload: GET signs the sorted query string (excluding signature headers),
+    // POST/PUT/DELETE sign the raw JSON body.
+    const bodyStr =
+      request.method === 'GET'
+        ? this.signatureService.canonicalizeQuery(request.query)
+        : JSON.stringify(request.body || {});
+
     const payload = this.signatureService.buildPayload(bodyStr, timestamp, nonce);
-    const isValid = this.signatureService.verify(payload, merchant.appSecret, signature);
+    const secret = this.encryptionService.decrypt(merchant.appSecret);
+    const isValid = this.signatureService.verify(payload, secret, signature);
 
     if (!isValid) {
       throw new UnauthorizedException('Invalid signature');

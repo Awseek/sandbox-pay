@@ -1,98 +1,117 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# WeiPay Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+WeiPay 聚合支付平台的后端服务，基于 **NestJS 11 + TypeORM + MySQL** 构建，提供商户管理、聚合下单、第三方支付网关回调、异步通知重试、管理后台 API 等能力。
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 技术栈
 
-## Description
+- **框架**: NestJS 11 (Express)
+- **数据库**: MySQL 8 + TypeORM 0.3
+- **鉴权**: Passport-JWT
+- **支付渠道**: 支付宝 (alipay-sdk)、PayPal (Checkout Server SDK)、自有兜底通道 (Native)
+- **实时通信**: Socket.IO（订单状态推送）
+- **API 文档**: Swagger (`/api/docs`)
+- **定时任务**: `@nestjs/schedule` + cron（异步通知重试）
+- **日志**: Winston + nest-winston
+- **校验**: class-validator + 全局 ValidationPipe
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 目录结构
 
-## Project setup
-
-```bash
-$ npm install
+```
+src/
+├── auth/          JWT 鉴权 + SSO 回调 (we29.cn)
+├── admin/         管理后台 API（统计 / 订单 / 商户）
+├── payment/       支付核心
+│   ├── controllers/   alipay / paypal / native-pay
+│   ├── gateways/      第三方网关封装
+│   ├── services/      统一下单服务
+│   └── payment.gateway.ts   Socket.IO Gateway
+├── gateway/       商户接入网关（签名校验 + 回调）
+├── common/        异常过滤器 / 响应拦截器 / Correlation-Id / 定时任务
+├── entities/      User / Merchant / PaymentOrder / NotifyQueue
+└── main.ts        入口（全局管道 / 过滤器 / Swagger / CORS）
 ```
 
-## Compile and run the project
+## 快速开始
+
+### 1. 安装依赖
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+pnpm install
 ```
 
-## Run tests
+### 2. 配置环境变量
+
+复制 `.env.example` 为 `.env` 并填写：
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+cp .env.example .env
 ```
 
-## Deployment
+关键变量：
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+| 变量 | 说明 |
+|---|---|
+| `PORT` | 服务端口，默认 3000 |
+| `DB_*` | MySQL 连接配置 |
+| `DB_SYNCHRONIZE` | **生产必须设为 `false`**，开发可设 `true` |
+| `JWT_SECRET` | JWT 签名密钥（必填） |
+| `GATEWAY_SECRET` | 商户接入网关签名密钥 |
+| `FRONTEND_URL` | 前端地址，用于 SSO 重定向 |
+| `ALIPAY_*` | 支付宝沙箱/正式凭证 |
+| `PAYPAL_*` | PayPal 应用凭证 |
+| `SMTP_*` | 邮件通知配置 |
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 3. 初始化数据库
+
+确保已创建数据库（默认 `wepay_db`）。开发模式下 `DB_SYNCHRONIZE=true` 会自动建表。
+
+### 4. 启动
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# 开发（热重载）
+pnpm dev
+
+# 生产构建
+pnpm build && pnpm start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+启动后：
 
-## Resources
+- API: <http://localhost:3000>
+- Swagger 文档: <http://localhost:3000/api/docs>
 
-Check out a few resources that may come in handy when working with NestJS:
+## 主要 API 模块
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+| 路径前缀 | 模块 | 说明 |
+|---|---|---|
+| `/api/auth` | Auth | 登录 / SSO 回调 / 同步登录 |
+| `/api/admin` | Admin | 统计、订单列表、商户管理（需 JWT） |
+| `/api/native-pay` | NativePay | 收银台数据 / 沙箱确认 / 渠道切换 |
+| `/api/alipay` | Alipay | 支付宝下单 + 异步通知 |
+| `/api/paypal` | PayPal | PayPal 下单 + capture |
+| `/api/gateway` | Gateway | 商户接入下单（签名校验） |
 
-## Support
+## 架构要点
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- **全局响应包装**: `TransformInterceptor` 统一返回 `{ code, data, msg }`
+- **全局异常**: `AllExceptionsFilter` 捕获并格式化所有异常
+- **CorrelationId 中间件**: 每个请求注入唯一 ID，便于链路追踪
+- **异步通知队列**: `NotifyQueue` 表 + 定时任务对商户回调失败做指数退避重试
+- **聚合下单**: 商户调用 `/api/gateway` 创建订单，后端按规则路由到支付宝 / PayPal / 自有兜底
 
-## Stay in touch
+## 开发命令
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+```bash
+pnpm dev          # 开发模式
+pnpm build        # 编译
+pnpm start:prod   # 运行编译产物
+pnpm lint         # ESLint 修复
+pnpm format       # Prettier 格式化
+```
 
-## License
+## 安全注意事项
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- 生产环境务必设置 `DB_SYNCHRONIZE=false`，使用迁移脚本管理表结构
+- `JWT_SECRET` / `GATEWAY_SECRET` 必须使用足够长度的随机串
+- 不要将 `.env` 提交到仓库
+- 支付宝 / PayPal 凭证使用环境变量注入，避免硬编码

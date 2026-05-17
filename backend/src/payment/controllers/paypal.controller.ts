@@ -1,4 +1,6 @@
 import { Controller, Get, Query, Response } from '@nestjs/common';
+import type { Response as ExpressResponse } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PaymentOrder } from '../../entities/payment-order.entity';
@@ -12,6 +14,7 @@ export class PayPalController {
     @InjectRepository(PaymentOrder)
     private orderRepository: Repository<PaymentOrder>,
     private paypalService: PayPalService,
+    private configService: ConfigService,
   ) {}
 
   @Get('callback')
@@ -20,12 +23,14 @@ export class PayPalController {
     @Query('orderNo') orderNo: string,
     @Query('token') token: string,
     @Query('cancel') cancel: string,
-    @Response() res: any,
+    @Response() res: ExpressResponse,
   ) {
     const order = await this.orderRepository.findOne({ where: { orderNo } });
     if (!order) return res.redirect('/?error=order_not_found');
 
-    const returnUrl = order.returnUrl || '/';
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || '';
+    const defaultReturnUrl = frontendUrl ? `${frontendUrl}/cashier` : '/cashier';
+    const returnUrl = order.returnUrl || defaultReturnUrl;
 
     if (cancel) {
       return res.redirect(this.buildReturnUrl(returnUrl, orderNo, 'cancelled'));

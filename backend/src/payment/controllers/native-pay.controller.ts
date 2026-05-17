@@ -1,22 +1,22 @@
-import { Controller, Get, Post, Query, Body, UseGuards, Req, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Controller, Get, Post, Query, Body, UseGuards, Req, BadRequestException, Logger } from '@nestjs/common';
 import type { Request } from 'express';
 import { NativePayService } from '../gateways/native-pay.service';
-import { PaymentService } from '../services/payment.service';
-import { Merchant } from '../../entities/merchant.entity';
+import { AlipayService } from '../gateways/alipay.service';
+import { PayPalService } from '../gateways/paypal.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import * as crypto from 'crypto';
+import { SandboxGuard } from '../../common/guards/sandbox.guard';
+import { errMessage, errStack } from '../../common/util/error';
 
 @ApiTags('NativePay')
 @Controller('api/native-pay')
 export class NativePayController {
+  private readonly logger = new Logger(NativePayController.name);
+
   constructor(
     private nativePayService: NativePayService,
-    private paymentService: PaymentService,
-    @InjectRepository(Merchant)
-    private merchantRepository: Repository<Merchant>,
+    private alipayService: AlipayService,
+    private paypalService: PayPalService,
   ) {}
 
   @Get('cashier')
@@ -28,47 +28,48 @@ export class NativePayController {
   @Post('confirm')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Admin manually confirm payment received' })
-  async confirmPayment(@Body() body: { orderNo: string; tradeNo?: string }) {
-    return this.nativePayService.confirmPayment(body.orderNo, body.tradeNo);
+  async confirmPayment(
+    @Body() body: { orderNo: string; tradeNo?: string; walletUser: string; walletPass: string },
+  ) {
+    return this.nativePayService.confirmPayment(
+      body.orderNo,
+      body.tradeNo,
+      body.walletUser,
+      body.walletPass,
+    );
   }
-
 
   @Post('sandbox-confirm')
-  @ApiOperation({ summary: 'Sandbox: confirm payment for testing (no auth required)' })
-  async sandboxConfirm(@Body() body: { orderNo: string }) {
-    return this.nativePayService.confirmPayment(body.orderNo, 'SANDBOX_' + Date.now());
+  @UseGuards(SandboxGuard)
+  @ApiOperation({ summary: '[SANDBOX-ONLY] confirm payment for local testing (disabled in production)' })
+  async sandboxConfirm(@Body() body: { orderNo: string; walletUser?: string; walletPass?: string }) {
+    return this.nativePayService.confirmPayment(
+      body.orderNo,
+      'WP_WALLET_' + Date.now(),
+      body.walletUser,
+      body.walletPass,
+    );
   }
 
-  @Post('test-pay')
-  @ApiOperation({ summary: 'Quick test pay entry without signature for demo' })
-  async testPay(@Body() body: { amount?: number; productName?: string }, @Req() req: Request) {
+  @Post('switch-channel')
+  @ApiOperation({ summary: 'Directly invoke real payment gateways (Alipay / PayPal) from cashier' })
+  async switchChannel(@Body() body: { orderNo: string; channel: 'alipay' | 'paypal' }, @Req() req: Request) {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     try {
-      let merchant = await this.merchantRepository.findOne({ where: {} });
-      if (!merchant) {
-        merchant = this.merchantRepository.create({
-          name: 'WeiPay Demo Merchant',
-          appKey: 'wp_demo_' + crypto.randomBytes(6).toString('hex'),
-          appSecret: crypto.createHash('sha256').update(crypto.randomBytes(16)).digest('hex'),
-          isActive: true,
-        });
-        await this.merchantRepository.save(merchant);
+      if (body.channel === 'alipay') {
+        const res = await this.alipayService.createPagePay(body.orderNo, baseUrl);
+        return { code: 200, data: res };
+      } else if (body.channel === 'paypal') {
+        const res = await this.paypalService.createOrder(body.orderNo, baseUrl);
+        return { code: 200, data: res };
       }
-
-      const amount = Number(body.amount || 88.88);
-      const productName = body.productName || '自有兜底支付体验商品 (Demo)';
-
-      const orderResult = await this.paymentService.createOrder(merchant.id, {
-        amount,
-        productName,
-        payMethod: 'native',
-      });
-
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
-      return await this.nativePayService.createOrder(orderResult.orderNo, baseUrl);
-    } catch (err: any) {
-      console.error('TestPay Error Stack:', err);
-      throw new BadRequestException(`TestPay Error: ${err.message || err}`);
+      throw new BadRequestException('Unsupported payment channel');
+    } catch (err: unknown) {
+      const message = errMessage(err);
+      this.logger.error(`Switch channel error: ${message}`, errStack(err));
+      throw new BadRequestException(message || 'Gateway invocation failed');
     }
   }
+
 }
 

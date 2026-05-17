@@ -6,6 +6,7 @@ import { HttpService } from '@nestjs/axios';
 import { NotifyQueue, NotifyStatus } from '../../entities/notify-queue.entity';
 import { SignatureService } from './signature.service';
 import { firstValueFrom } from 'rxjs';
+import { errMessage } from '../util/error';
 
 export interface PaymentNotification {
   orderNo: string;
@@ -98,8 +99,8 @@ export class NotifyService {
       } else {
         this.handleFailure(item, `HTTP ${response.status}`);
       }
-    } catch (error) {
-      this.handleFailure(item, error.message);
+    } catch (err: unknown) {
+      this.handleFailure(item, errMessage(err));
     }
     await this.notifyRepository.save(item);
   }
