@@ -52,7 +52,7 @@
     "csv-parse": "^6.2.1",
     "mysql2": "^3.22.3",
     "nest-winston": "^1.10.2",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^9.0.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "qrcode": "^1.5.4",
