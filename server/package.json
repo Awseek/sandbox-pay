@@ -38,7 +38,7 @@
     "@nestjs/swagger": "^11.4.3",
     "@nestjs/terminus": "^11.1.1",
     "@nestjs/throttler": "^6.5.0",
-    "@nestjs/typeorm": "^11.0.1",
+    "@nestjs/typeorm": "^11.0.2",
     "@nestjs/websockets": "^11.1.21",
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@types/socket.io": "^3.0.2",
