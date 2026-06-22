@@ -6,14 +6,14 @@
 
 ```
 WeiPay/
-├── backend/    NestJS 11 + TypeORM + MySQL  服务端
-└── frontend/   React 19 + Vite 8 + Tailwind 4  Web 端
+├── server/    NestJS 11 + TypeORM + MySQL  服务端
+└── client/    React 19 + Vite 8 + Tailwind 4  Web 端
 ```
 
 详细文档见各子项目：
 
-- [`backend/README.md`](./backend/README.md)
-- [`frontend/README.md`](./frontend/README.md)
+- [`server/README.md`](./server/README.md)
+- [`client/README.md`](./client/README.md)
 
 ## 技术栈速览
 
@@ -25,12 +25,12 @@ WeiPay/
 
 ## 本地启动
 
-需要：Node 18+，pnpm，MySQL 8。
+需要：Node 20+，pnpm，MySQL 8。
 
 ### 1. 后端
 
 ```bash
-cd backend
+cd server
 cp .env.example .env       # 填写数据库 / JWT / 第三方凭证
 pnpm install
 pnpm dev                   # http://localhost:3000
@@ -41,7 +41,7 @@ API 文档：<http://localhost:3000/api/docs>
 ### 2. 前端
 
 ```bash
-cd frontend
+cd client
 cp .env.example .env.local
 pnpm install
 pnpm dev                   # http://localhost:5173
@@ -62,9 +62,12 @@ pnpm dev                   # http://localhost:5173
 ## 安全建议
 
 - 生产环境务必将 `DB_SYNCHRONIZE` 设为 `false`，使用 TypeORM 迁移管理表结构
-- `JWT_SECRET` / `GATEWAY_SECRET` 使用 `openssl rand -hex 32` 生成
+- `JWT_SECRET` / `GATEWAY_SECRET` / `ENCRYPTION_KEY` 使用 `openssl rand -hex 32` 生成
+- 生产环境 `ENCRYPTION_KEY` 为必填项（与 `JWT_SECRET` 必须不同）
 - 严禁提交 `.env` / `.env.local` 等密钥文件
 - 支付宝 / PayPal 凭证通过环境变量注入
+- `ENABLE_SANDBOX` 生产环境必须设为 `false`
+- `PAYPAL_ENVIRONMENT` 生产环境设为 `live`
 
 ## License
 

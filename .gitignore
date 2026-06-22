@@ -38,10 +38,10 @@ Thumbs.db
 coverage/
 
 # NestJS
-backend/dist/
+server/dist/
 
 # Vite
-frontend/dist/
+client/dist/
 
 # Misc
 *.local

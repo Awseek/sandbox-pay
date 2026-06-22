@@ -15,8 +15,8 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
-    build: ./backend
+  server:
+    build: ./server
     restart: unless-stopped
     depends_on:
       db:
@@ -34,7 +34,7 @@ services:
       GATEWAY_SECRET: ${GATEWAY_SECRET:-change-me-in-production}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       ENABLE_SANDBOX: ${ENABLE_SANDBOX:-false}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost}
       ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
       ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
       ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
@@ -43,14 +43,26 @@ services:
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
     expose:
       - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
 
-  frontend:
-    build: ./frontend
+  client:
+    build: ./client
     restart: unless-stopped
     depends_on:
-      - backend
+      server:
+        condition: service_healthy
     ports:
       - "80:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   db_data:
