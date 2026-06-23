@@ -1,54 +1,67 @@
 import { NonceStore } from './nonce-store.service';
 
+function createService(overrides: Record<string, any> = {}) {
+  const defaults = {
+    repo: {
+      findOne: jest.fn().mockResolvedValue(null),
+      save: jest.fn().mockImplementation(async (item: any) => item),
+      delete: jest.fn().mockResolvedValue({ affected: 0 }),
+    },
+  };
+  const deps = { ...defaults, ...overrides };
+  const service = new NonceStore(deps.repo as any);
+  return { service, deps };
+}
+
 describe('NonceStore', () => {
-  let store: NonceStore;
-
-  beforeEach(() => {
-    store = new NonceStore();
-  });
-
   describe('tryConsume', () => {
-    it('returns true for a fresh nonce', () => {
-      expect(store.tryConsume('nonce-1', 60_000)).toBe(true);
+    it('returns true for a fresh nonce', async () => {
+      const { service, deps } = createService();
+      deps.repo.findOne.mockResolvedValue(null);
+
+      const result = await service.tryConsume('nonce-1', 60_000);
+
+      expect(result).toBe(true);
+      expect(deps.repo.save).toHaveBeenCalled();
     });
 
-    it('returns false for a duplicate nonce within TTL', () => {
-      store.tryConsume('nonce-2', 60_000);
-      expect(store.tryConsume('nonce-2', 60_000)).toBe(false);
+    it('returns false for a duplicate nonce within TTL', async () => {
+      const { service, deps } = createService();
+      const futureDate = new Date(Date.now() + 60000);
+      deps.repo.findOne.mockResolvedValue({ nonce: 'nonce-2', expiresAt: futureDate });
+
+      const result = await service.tryConsume('nonce-2', 60_000);
+
+      expect(result).toBe(false);
     });
 
-    it('allows a nonce to be reused after TTL expires', () => {
-      // Use a very short TTL
-      store.tryConsume('nonce-3', 1); // 1ms TTL
+    it('allows a nonce to be reused after TTL expires', async () => {
+      const { service, deps } = createService();
+      const pastDate = new Date(Date.now() - 1000);
+      deps.repo.findOne.mockResolvedValue({ nonce: 'nonce-3', expiresAt: pastDate });
 
-      // Wait for expiry
-      const start = Date.now();
-      while (Date.now() - start < 5) {} // busy-wait 5ms
+      const result = await service.tryConsume('nonce-3', 60_000);
 
-      expect(store.tryConsume('nonce-3', 60_000)).toBe(true);
+      expect(result).toBe(true);
     });
 
-    it('tracks different nonces independently', () => {
-      store.tryConsume('a', 60_000);
-      store.tryConsume('b', 60_000);
+    it('returns false when save fails (concurrent write)', async () => {
+      const { service, deps } = createService();
+      deps.repo.findOne.mockResolvedValue(null);
+      deps.repo.save.mockRejectedValue(new Error('Duplicate entry'));
 
-      expect(store.tryConsume('a', 60_000)).toBe(false);
-      expect(store.tryConsume('b', 60_000)).toBe(false);
-      expect(store.tryConsume('c', 60_000)).toBe(true);
+      const result = await service.tryConsume('nonce-4', 60_000);
+
+      expect(result).toBe(false);
     });
-  });
 
-  describe('eviction', () => {
-    it('evicts expired entries lazily', () => {
-      store.tryConsume('old', 1); // 1ms TTL
-      const start = Date.now();
-      while (Date.now() - start < 5) {} // wait for expiry
+    it('cleans up expired records', async () => {
+      const { service, deps } = createService();
+      deps.repo.findOne.mockResolvedValue(null);
 
-      // This call triggers eviction of 'old'
-      store.tryConsume('new', 60_000);
+      await service.tryConsume('nonce-5', 60_000);
 
-      // 'old' should have been evicted, so we can consume it again
-      expect(store.tryConsume('old', 60_000)).toBe(true);
+      expect(deps.repo.delete).toHaveBeenCalled();
     });
   });
 });

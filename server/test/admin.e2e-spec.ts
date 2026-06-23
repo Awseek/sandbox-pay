@@ -130,4 +130,111 @@ describe('Admin (e2e)', () => {
         .expect(400);
     });
   });
+
+  describe('GET /api/admin/merchants', () => {
+    it('returns merchant list', () => {
+      return request(app.getHttpServer())
+        .get('/api/admin/merchants')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.code).toBe(200);
+          expect(Array.isArray(res.body.data)).toBe(true);
+        });
+    });
+  });
+
+  describe('POST /api/admin/merchants', () => {
+    it('rejects short name', () => {
+      return request(app.getHttpServer())
+        .post('/api/admin/merchants')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'A' })
+        .expect(400);
+    });
+
+    it('creates merchant with valid name', () => {
+      return request(app.getHttpServer())
+        .post('/api/admin/merchants')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Test Merchant 2' })
+        .expect(201)
+        .expect((res) => {
+          expect(res.body.data).toHaveProperty('appKey');
+          expect(res.body.data).toHaveProperty('appSecret');
+          expect(res.body.data.name).toBe('Test Merchant 2');
+        });
+    });
+  });
+
+  describe('GET /api/admin/notifications', () => {
+    it('returns notification list', () => {
+      return request(app.getHttpServer())
+        .get('/api/admin/notifications')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.code).toBe(200);
+          expect(res.body.data).toHaveProperty('items');
+          expect(res.body.data).toHaveProperty('total');
+        });
+    });
+  });
+
+  describe('GET /api/admin/audit-logs', () => {
+    it('returns audit log list', () => {
+      return request(app.getHttpServer())
+        .get('/api/admin/audit-logs')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.code).toBe(200);
+          expect(res.body.data).toHaveProperty('items');
+        });
+    });
+  });
+
+  describe('GET /api/admin/settings', () => {
+    it('returns site settings', () => {
+      return request(app.getHttpServer())
+        .get('/api/admin/settings')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.code).toBe(200);
+          expect(typeof res.body.data).toBe('object');
+        });
+    });
+  });
+
+  describe('POST /api/admin/settings', () => {
+    it('rejects invalid setting keys', () => {
+      return request(app.getHttpServer())
+        .post('/api/admin/settings')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ INVALID_KEY: 'value' })
+        .expect(400);
+    });
+
+    it('accepts valid setting keys', () => {
+      return request(app.getHttpServer())
+        .post('/api/admin/settings')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ FEE_RATE_ALIPAY: '0.01' })
+        .expect(201);
+    });
+  });
+
+  describe('GET /api/admin/reconciliation', () => {
+    it('returns reconciliation records', () => {
+      return request(app.getHttpServer())
+        .get('/api/admin/reconciliation')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.code).toBe(200);
+          expect(res.body.data).toHaveProperty('items');
+        });
+    });
+  });
 });
