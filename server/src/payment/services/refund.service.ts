@@ -48,7 +48,7 @@ export class RefundService {
 
   async execute(dto: RefundDto, opts: RefundOptions): Promise<RefundResult> {
     if (!dto?.orderNo || !dto?.amount) {
-      throw new BadRequestException('orderNo and amount are required');
+      throw new BadRequestException('orderNo 和 amount 为必填项');
     }
 
     const order = await this.lookupOrder(dto.orderNo, opts.merchantId);
@@ -150,7 +150,7 @@ export class RefundService {
       }
       case 'paypal': {
         if (!order.thirdPartyTradeNo) {
-          throw new BadRequestException('PayPal captureId missing on order — cannot refund');
+          throw new BadRequestException('订单缺少 PayPal captureId，无法退款');
         }
         const currency = order.foreignCurrency || 'USD';
         // For PayPal we refund in the foreign currency (USD cents). For partial
@@ -172,7 +172,7 @@ export class RefundService {
         // Self-custody channel: trust admin / accounting to mirror funds out-of-band.
         return { refundTradeNo: `WP_REFUND_${Date.now()}`, currency: 'CNY' };
       default:
-        throw new BadRequestException(`Unsupported payMethod for refund: ${order.payMethod}`);
+        throw new BadRequestException(`不支持的退款渠道: ${order.payMethod}`);
     }
   }
 }

@@ -37,7 +37,7 @@ export class EncryptionService implements OnModuleInit {
     } else {
       try {
         buf = Buffer.from(raw, 'base64');
-      } catch {
+      } catch (_) {
         buf = Buffer.from(raw, 'utf8');
       }
     }
@@ -71,7 +71,7 @@ export class EncryptionService implements OnModuleInit {
       return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
     } catch (err: unknown) {
       this.logger.error(`Decryption failed: ${errMessage(err)}`);
-      throw new Error('Failed to decrypt sensitive value');
+      throw new Error('敏感数据解密失败');
     }
   }
 }

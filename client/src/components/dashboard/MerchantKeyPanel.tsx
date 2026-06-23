@@ -76,7 +76,7 @@ export default function MerchantKeyPanel({ merchant, copiedKey, onCopy, onResetS
           <Button
             onPress={onResetSecret}
             variant="secondary"
-            className="w-full py-3 bg-surface hover:bg-surface-secondary text-foreground font-medium rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3 bg-surface hover:bg-surface-secondary text-foreground font-medium rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5 text-muted" />
             重新生成私钥

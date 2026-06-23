@@ -1,67 +1,25 @@
-import { Injectable, Logger, OnModuleInit, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PaymentOrder, OrderStatus } from '../entities/payment-order.entity';
-import { Merchant } from '../entities/merchant.entity';
-import { NotifyQueue } from '../entities/notify-queue.entity';
+import { NotifyQueue, NotifyStatus } from '../entities/notify-queue.entity';
 import { AuditLog } from '../entities/audit-log.entity';
-import { EncryptionService } from '../common/services/encryption.service';
 import { AuditService } from '../common/services/audit.service';
 import { toYuan } from '../common/money';
-import * as crypto from 'crypto';
-import { errMessage, errStack } from '../common/util/error';
 
 @Injectable()
-export class AdminService implements OnModuleInit {
+export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
   constructor(
     @InjectRepository(PaymentOrder)
     private orderRepository: Repository<PaymentOrder>,
-    @InjectRepository(Merchant)
-    private merchantRepository: Repository<Merchant>,
     @InjectRepository(NotifyQueue)
     private notifyRepository: Repository<NotifyQueue>,
     @InjectRepository(AuditLog)
     private auditRepository: Repository<AuditLog>,
-    private readonly encryptionService: EncryptionService,
     private readonly auditService: AuditService,
   ) {}
-
-  private generateSecret(): string {
-    return crypto.createHash('sha256').update(crypto.randomBytes(32)).digest('hex');
-  }
-
-  /** Find the first merchant, or create a default sandbox one if none exists. */
-  private async ensureMerchant(): Promise<Merchant> {
-    let merchant = await this.merchantRepository.findOne({ where: {} });
-    if (!merchant) {
-      const plain = this.generateSecret();
-      merchant = this.merchantRepository.create({
-        name: 'WeiPay Sandbox Merchant',
-        appKey: 'wp_sandbox_' + crypto.randomBytes(6).toString('hex'),
-        appSecret: this.encryptionService.encrypt(plain),
-        isActive: true,
-      });
-      await this.merchantRepository.save(merchant);
-    }
-    return merchant;
-  }
-
-  async onModuleInit() {
-    try {
-      const count = await this.merchantRepository.count();
-      if (count === 0) {
-        await this.ensureMerchant();
-        this.logger.log('✅ 默认沙箱商户数据已同步至数据库');
-      } else {
-        this.logger.log('✅ 数据库已有商户记录，跳过初始化');
-      }
-    } catch (err: unknown) {
-      this.logger.error('初始化商户数据失败: ' + errMessage(err), errStack(err));
-    }
-  }
-
 
   /**
    * Stats are computed via SQL aggregation rather than loading rows into memory,
@@ -161,59 +119,17 @@ export class AdminService implements OnModuleInit {
         fee: toYuan(order.fee),
         settleAmount: toYuan(order.settleAmount),
         payMethod: order.payMethod,
+        productName: order.productName,
+        externalOrderNo: order.externalOrderNo,
+        thirdPartyTradeNo: order.thirdPartyTradeNo,
         status,
         time,
         rawDate: order.createdAt,
+        payAt: order.payAt,
       };
     });
 
     return { items, total, page, pageSize };
-  }
-
-  /**
-   * Resolve the active merchant entity (creates a default one if the table
-   * is empty). Returned as-is so callers needing the internal id can use it.
-   */
-  async findActiveMerchant(): Promise<Merchant> {
-    return this.ensureMerchant();
-  }
-
-  async getMerchant() {
-    const merchant = await this.ensureMerchant();
-    return {
-      appKey: merchant.appKey,
-      // Mask the secret — full value is only returned on reset-secret.
-      appSecret: '••••••••••••••••••••••••••••',
-      name: merchant.name,
-    };
-  }
-
-  async resetSecret(actor: string = 'admin', ip?: string) {
-    let merchant = await this.merchantRepository.findOne({ where: {} });
-    if (!merchant) {
-      return this.getMerchant();
-    }
-    const plain = this.generateSecret();
-    merchant.appSecret = this.encryptionService.encrypt(plain);
-    await this.merchantRepository.save(merchant);
-
-    // The new plaintext secret is intentionally NOT logged here — only the
-    // fact that a rotation happened. Caller receives the secret in the
-    // response and is expected to handle it out-of-band.
-    await this.auditService.log({
-      action: 'reset_secret',
-      actor,
-      targetType: 'merchant',
-      targetId: String(merchant.id),
-      ip,
-      detail: { appKey: merchant.appKey },
-    });
-
-    return {
-      appKey: merchant.appKey,
-      appSecret: plain,
-      name: merchant.name,
-    };
   }
 
   async deleteTransaction(orderNo: string, actor: string = 'admin', ip?: string) {
@@ -234,87 +150,6 @@ export class AdminService implements OnModuleInit {
 
     this.logger.log(`Order ${orderNo} deleted by ${actor}`);
     return { success: true };
-  }
-
-  // ── Merchant CRUD ──────────────────────────────────────────────
-
-  async listMerchants() {
-    const merchants = await this.merchantRepository.find({ order: { id: 'ASC' } });
-    return merchants.map(m => ({
-      id: m.id,
-      name: m.name,
-      appKey: m.appKey,
-      appSecret: '••••••••••••••••••••••••••••',
-      isActive: m.isActive,
-      createdAt: m.createdAt,
-    }));
-  }
-
-  async createMerchant(name: string, actor: string = 'admin', ip?: string) {
-    if (!name || name.trim().length < 2) {
-      throw new BadRequestException('商户名称至少 2 个字符');
-    }
-    const plain = this.generateSecret();
-    const merchant = this.merchantRepository.create({
-      name: name.trim(),
-      appKey: 'wp_' + crypto.randomBytes(8).toString('hex'),
-      appSecret: this.encryptionService.encrypt(plain),
-      isActive: true,
-    });
-    await this.merchantRepository.save(merchant);
-
-    await this.auditService.log({
-      action: 'create_merchant',
-      actor,
-      targetType: 'merchant',
-      targetId: String(merchant.id),
-      ip,
-      detail: { name: merchant.name, appKey: merchant.appKey },
-    });
-
-    return {
-      id: merchant.id,
-      name: merchant.name,
-      appKey: merchant.appKey,
-      appSecret: plain, // 返回一次明文，之后不再展示
-      isActive: merchant.isActive,
-    };
-  }
-
-  async updateMerchant(id: number, updates: { name?: string }, actor: string = 'admin', ip?: string) {
-    const merchant = await this.merchantRepository.findOne({ where: { id } });
-    if (!merchant) throw new NotFoundException('商户不存在');
-    if (updates.name) merchant.name = updates.name.trim();
-    await this.merchantRepository.save(merchant);
-
-    await this.auditService.log({
-      action: 'update_merchant',
-      actor,
-      targetType: 'merchant',
-      targetId: String(id),
-      ip,
-      detail: updates,
-    });
-
-    return { id: merchant.id, name: merchant.name, appKey: merchant.appKey, isActive: merchant.isActive };
-  }
-
-  async toggleMerchantActive(id: number, actor: string = 'admin', ip?: string) {
-    const merchant = await this.merchantRepository.findOne({ where: { id } });
-    if (!merchant) throw new NotFoundException('商户不存在');
-    merchant.isActive = !merchant.isActive;
-    await this.merchantRepository.save(merchant);
-
-    await this.auditService.log({
-      action: merchant.isActive ? 'activate_merchant' : 'deactivate_merchant',
-      actor,
-      targetType: 'merchant',
-      targetId: String(id),
-      ip,
-      detail: { isActive: merchant.isActive },
-    });
-
-    return { id: merchant.id, name: merchant.name, isActive: merchant.isActive };
   }
 
   // ── Notification Status ────────────────────────────────────────
@@ -351,7 +186,7 @@ export class AdminService implements OnModuleInit {
   async replayNotification(id: number, actor: string = 'admin', ip?: string) {
     const notify = await this.notifyRepository.findOne({ where: { id } });
     if (!notify) throw new NotFoundException('通知记录不存在');
-    notify.status = 0 as any; // Reset to Pending
+    notify.status = NotifyStatus.Pending;
     notify.retryCount = 0;
     notify.lastAttemptAt = new Date();
     notify.lastError = undefined;

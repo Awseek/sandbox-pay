@@ -7,6 +7,8 @@ import { PaymentOrder } from './entities/payment-order.entity';
 import { NotifyQueue } from './entities/notify-queue.entity';
 import { ReconciliationRecord } from './entities/reconciliation-record.entity';
 import { AuditLog } from './entities/audit-log.entity';
+import { SiteSetting } from './entities/site-setting.entity';
+import { NonceRecord } from './entities/nonce-record.entity';
 
 // Used by the TypeORM CLI for generating / running migrations.
 // `dotenv` is bundled transitively via @nestjs/config; required at runtime to
@@ -15,7 +17,7 @@ import { AuditLog } from './entities/audit-log.entity';
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('dotenv').config();
-} catch {
+} catch (_) {
   // dotenv not present — assume env vars are already set in the shell.
 }
 
@@ -26,7 +28,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USERNAME || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_DATABASE || 'wepay_db',
-  entities: [User, Merchant, PaymentOrder, NotifyQueue, ReconciliationRecord, AuditLog],
+  entities: [User, Merchant, PaymentOrder, NotifyQueue, ReconciliationRecord, AuditLog, SiteSetting, NonceRecord],
   migrations: ['src/migrations/*.ts'],
   migrationsTableName: 'typeorm_migrations',
   synchronize: false,

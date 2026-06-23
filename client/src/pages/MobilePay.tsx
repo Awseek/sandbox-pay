@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ShieldCheck, Check, Smartphone, Zap, Lock, RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react'
+import { ShieldCheck, Check, Smartphone, Zap, Lock, RefreshCw, AlertCircle, ArrowLeft, Clock } from 'lucide-react'
 import { api, ApiError } from '../utils/api'
+import { useOrderStatus } from '../utils/socket'
 import { Button, Card } from '@heroui/react'
 import type { CashierInfo } from '../components/dashboard/types'
 
@@ -14,6 +15,8 @@ export default function MobilePay() {
   const [error, setError] = useState('')
   const [paying, setPaying] = useState(false)
   const [paidSuccess, setPaidSuccess] = useState(false)
+  const [countdown, setCountdown] = useState('')
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchInfo = async () => {
     if (!orderNo) {
@@ -27,6 +30,9 @@ export default function MobilePay() {
       setInfo(data)
       if (data.status === 'paid') {
         setPaidSuccess(true)
+        if (pollRef.current) clearInterval(pollRef.current)
+      } else if (data.status === 'expired' || data.status === 'failed') {
+        if (pollRef.current) clearInterval(pollRef.current)
       }
     } catch (err: unknown) {
       if (err instanceof ApiError) {
@@ -42,7 +48,38 @@ export default function MobilePay() {
 
   useEffect(() => {
     fetchInfo()
+    pollRef.current = setInterval(fetchInfo, 5000)
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
   }, [orderNo])
+
+  // 倒计时
+  useEffect(() => {
+    if (!info?.expireAt || info.status !== 'pending') return
+    const timer = setInterval(() => {
+      const diff = new Date(info.expireAt!).getTime() - Date.now()
+      if (diff <= 0) {
+        setCountdown('已过期')
+        clearInterval(timer)
+        fetchInfo()
+        return
+      }
+      const mins = Math.floor(diff / 60000)
+      const secs = Math.floor((diff % 60000) / 1000)
+      setCountdown(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [info?.expireAt, info?.status])
+
+  // Socket.IO 实时推送
+  const handleWsStatus = useCallback((status: string) => {
+    if (status === 'paid' || status === 'refunded' || status === 'failed') {
+      if (pollRef.current) clearInterval(pollRef.current)
+      fetchInfo()
+    }
+  }, [])
+  useOrderStatus(orderNo, handleWsStatus)
 
   const handleConfirmPay = async () => {
     if (!info) return
@@ -54,6 +91,7 @@ export default function MobilePay() {
         walletPass: '123456',
       })
       setPaidSuccess(true)
+      if (pollRef.current) clearInterval(pollRef.current)
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '无法通过存管网关核对'
       alert('支付鉴权驳回: ' + message)
@@ -137,6 +175,13 @@ export default function MobilePay() {
                   ¥ {info.amount.toFixed(2)}
                 </div>
                 <div className="text-xs text-neutral-300 font-medium truncate px-4">{info.productName}</div>
+                {/* 倒计时 */}
+                {countdown && info.status === 'pending' && (
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400 font-mono">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>支付剩余 {countdown}</span>
+                  </div>
+                )}
               </div>
 
               {/* 交易详情项 */}
@@ -195,4 +240,3 @@ export default function MobilePay() {
     </div>
   )
 }
-

@@ -36,7 +36,7 @@ pnpm install
 pnpm dev                   # http://localhost:3000
 ```
 
-API 文档：<http://localhost:3000/api/docs>
+API 文档：<http://localhost:3000/v1/api/docs>
 
 ### 2. 前端
 
@@ -47,27 +47,130 @@ pnpm install
 pnpm dev                   # http://localhost:5173
 ```
 
-前端开发服务器已通过 `vite.config.ts` 将 `/api` 代理到后端 `http://localhost:3000`。
+前端开发服务器已通过 `vite.config.ts` 将 `/api` 和 `/v1/api` 代理到后端 `http://localhost:3000`，同时代理 `/socket.io` WebSocket 连接。
+
+## Docker 部署
+
+```bash
+cp server/.env.example .env  # 按需填写环境变量
+docker compose up -d
+```
+
+- 客户端：`http://localhost`
+- 后端 API：`http://localhost/v1/api/`
+- Swagger：`http://localhost/v1/api/docs`
+
+## 支付流程架构
+
+```
+商户系统                    WeiPay 网关                   上游渠道
+   │                           │                           │
+   │  POST /gateway/pay        │                           │
+   │  (HMAC-SHA256 签名)       │                           │
+   ├──────────────────────────>│                           │
+   │                           │  创建订单 (Pending)        │
+   │                           │  计算手续费/汇率            │
+   │                           │──┐                        │
+   │                           │  │ 按 payMethod 路由       │
+   │                           │<─┘                        │
+   │                           │                           │
+   │                           │  alipay ─────────────────>│ 支付宝
+   │                           │  paypal ─────────────────>│ PayPal
+   │                           │  native ─────────┐        │ 官方存管
+   │  返回支付链接/表单          │                 │        │
+   │<──────────────────────────┤                 │        │
+   │                           │                 │        │
+   │                           │  异步回调通知     │        │
+   │                           │<────────────────┘        │
+   │                           │                           │
+   │                           │  markPaid (行锁事务)       │
+   │                           │  计算手续费                │
+   │                           │  WebSocket 推送收银台      │
+   │                           │  入队异步通知              │
+   │                           │                           │
+   │  POST /notify (签名)       │                           │
+   │<──────────────────────────┤  指数退避重试              │
+   │                           │  (5s→15s→60s→5m→15m)     │
+```
 
 ## 核心功能
 
-- **商户接入**：基于 `appKey + appSecret` 签名的下单网关
+- **商户接入**：基于 `appKey + appSecret` HMAC-SHA256 签名的下单网关
 - **聚合下单**：自动按规则路由到支付宝 / PayPal / 自有兜底
-- **收银台**：订单状态轮询、二维码 / 钱包登录、渠道切换
-- **异步通知**：失败重试队列（指数退避）
-- **管理后台**：交易统计、订单列表、商户凭证管理
-- **SSO**：与 we29.cn 单点登录集成
-- **实时推送**：Socket.IO 推送订单状态变更
+- **收银台**：WebSocket 实时推送 + HTTP 轮询兜底、二维码 / 钱包登录、渠道切换
+- **异步通知**：失败重试队列（指数退避 5s → 15s → 60s → 5min → 15min）
+- **管理后台**（8 个页面）：
+  - 总览仪表盘 — 统计卡片 + 最近交易 + 快速操作
+  - 订单管理 — 关键词搜索、状态/渠道/日期筛选、分页、确认收款、退款、删除
+  - 商户管理 — 创建/编辑/启停商户、密钥查看与复制
+  - 通知队列 — 异步回调状态监控、失败通知一键重发
+  - 对账管理 — 上传支付宝/PayPal 日账单 CSV、自动匹配、差异识别
+  - 审计日志 — 敏感操作追溯、按操作类型/操作者筛选
+  - 站点设置 — 手续费/汇率/限流/沙箱/邮件等业务参数热修改（无需重启）
+  - 开发沙箱 — 密钥管理、测试下单、数据重置
+- **对账**：上传支付宝/PayPal 日账单 CSV，自动匹配本地订单，识别差异
+- **SSO**：与 we29.cn 单点登录集成（共享 cookie 无感登录）
+- **实时推送**：Socket.IO 推送订单状态变更到收银台
+
+## 鉴权机制
+
+| 接口类型 | 鉴权方式 | 说明 |
+|---|---|---|
+| 商户网关 (`/api/gateway/*`) | HMAC-SHA256 签名 | 请求头携带 `X-WeiPay-AppKey` + `Timestamp` + `Nonce` + `Signature` |
+| 管理后台 (`/api/admin/*`) | JWT Bearer Token | 通过 SSO 无感登录获取，有效期 7 天 |
+| 收银台 (`/api/native-pay/cashier`) | 无（公开） | 凭 orderNo 查询，设计如此 |
+| 沙箱接口 (`sandbox-confirm`, `test-pay`) | SandboxGuard | 仅 `ENABLE_SANDBOX=true` 时开放 |
+| 健康检查 (`/health`) | 无 | Docker healthcheck 用 |
 
 ## 安全建议
 
 - 生产环境务必将 `DB_SYNCHRONIZE` 设为 `false`，使用 TypeORM 迁移管理表结构
 - `JWT_SECRET` / `GATEWAY_SECRET` / `ENCRYPTION_KEY` 使用 `openssl rand -hex 32` 生成
 - 生产环境 `ENCRYPTION_KEY` 为必填项（与 `JWT_SECRET` 必须不同）
-- 严禁提交 `.env` / `.env.local` 等密钥文件
+- 严禁提交 `.env` / `.env.local` 等密钥文件（`.gitignore` 已配置）
 - 支付宝 / PayPal 凭证通过环境变量注入
 - `ENABLE_SANDBOX` 生产环境必须设为 `false`
 - `PAYPAL_ENVIRONMENT` 生产环境设为 `live`
+
+## 开发规范
+
+### 提交规范
+
+```
+feat: 新功能
+fix: 修复
+refactor: 重构（不改变行为）
+docs: 文档
+test: 测试
+chore: 构建/工具链
+```
+
+### 分支策略
+
+- `main` — 生产分支，保护分支
+- `feat/*` — 功能分支，合并前需 CI 通过
+- `fix/*` — 修复分支
+
+### 代码规范
+
+- 后端：NestJS 模块化、TypeORM 实体、class-validator DTO
+- 前端：React 函数组件 + Hooks、Tailwind CSS、HeroUI
+- 错误消息统一中文
+- 金额统一整数分存储，API 边界转 yuan
+- 敏感信息不入日志（使用 `redact()` 函数）
+
+### 测试
+
+```bash
+# 后端单元测试
+cd server && pnpm test
+
+# 后端 e2e 测试
+cd server && pnpm test:e2e
+
+# 前端构建检查
+cd client && pnpm build
+```
 
 ## License
 

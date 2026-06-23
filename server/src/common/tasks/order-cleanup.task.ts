@@ -24,6 +24,7 @@ export class OrderCleanupTask {
         status: OrderStatus.Pending,
         now,
       })
+      .limit(1000)
       .execute();
 
     if (result.affected && result.affected > 0) {

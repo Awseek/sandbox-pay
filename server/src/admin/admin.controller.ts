@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ReconciliationService } from './reconciliation.service';
 import { ReconStatus } from '../entities/reconciliation-record.entity';
@@ -6,6 +6,9 @@ import { RefundService } from '../payment/services/refund.service';
 import { PaymentService } from '../payment/services/payment.service';
 import { NativePayService } from '../payment/gateways/native-pay.service';
 import { AuditService } from '../common/services/audit.service';
+import { SiteSettingsService } from '../common/services/site-settings.service';
+import { MerchantService } from '../common/services/merchant.service';
+import { SandboxGuard } from '../common/guards/sandbox.guard';
 import { RefundDto, TestPayDto, UploadBillDto } from '../payment/dto/payment.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -24,6 +27,8 @@ export class AdminController {
     private readonly paymentService: PaymentService,
     private readonly nativePayService: NativePayService,
     private readonly auditService: AuditService,
+    private readonly siteSettingsService: SiteSettingsService,
+    private readonly merchantService: MerchantService,
   ) {}
 
   /** Resolve a stable actor identifier from the JWT payload attached by `JwtAuthGuard`. */
@@ -81,50 +86,46 @@ export class AdminController {
   @Get('merchant')
   @ApiOperation({ summary: 'Get active merchant credentials' })
   async getMerchant() {
-    return this.adminService.getMerchant();
+    return this.merchantService.getMerchant();
   }
 
   @Get('merchants')
   @ApiOperation({ summary: 'List all merchants' })
   async listMerchants() {
-    return this.adminService.listMerchants();
+    return this.merchantService.listMerchants();
   }
 
   @Post('merchants')
   @ApiOperation({ summary: 'Create a new merchant' })
   async createMerchant(@Body() body: { name: string }, @Req() req: AuthenticatedRequest) {
-    return this.adminService.createMerchant(body.name, this.actorOf(req), clientIp(req));
+    return this.merchantService.createMerchant(body.name, this.actorOf(req), clientIp(req));
   }
 
-  @Post('merchants/:id')
+  @Patch('merchants/:id')
   @ApiOperation({ summary: 'Update merchant info' })
   async updateMerchant(@Param('id') id: string, @Body() body: { name?: string }, @Req() req: AuthenticatedRequest) {
-    return this.adminService.updateMerchant(Number(id), body, this.actorOf(req), clientIp(req));
+    return this.merchantService.updateMerchant(Number(id), body, this.actorOf(req), clientIp(req));
   }
 
   @Post('merchants/:id/toggle')
   @ApiOperation({ summary: 'Toggle merchant active/inactive' })
   async toggleMerchant(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
-    return this.adminService.toggleMerchantActive(Number(id), this.actorOf(req), clientIp(req));
+    return this.merchantService.toggleMerchantActive(Number(id), this.actorOf(req), clientIp(req));
   }
 
   @Post('merchant/reset-secret')
   @ApiOperation({ summary: 'Reset merchant appSecret' })
   async resetSecret(@Req() req: AuthenticatedRequest) {
-    return this.adminService.resetSecret(this.actorOf(req), clientIp(req));
+    return this.merchantService.resetSecret(this.actorOf(req), clientIp(req));
   }
 
-  /**
-   * Create a test order against the logged-in admin's active merchant and
-   * return the native cashier URL. Replaces the public sandbox-only `/api/native-pay/test-pay`.
-   */
   @Post('test-pay')
   @ApiOperation({ summary: 'Create a test order for the active merchant and return cashier URL' })
   async testPay(
     @Body() dto: TestPayDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    const merchant = await this.adminService.findActiveMerchant();
+    const merchant = await this.merchantService.findActiveMerchant();
 
     const orderResult = await this.paymentService.createOrder(merchant.id, {
       amount: dto.amount,
@@ -218,6 +219,7 @@ export class AdminController {
   // ── Data Reset (Sandbox) ─────────────────────────────────────
 
   @Post('reset-data')
+  @UseGuards(SandboxGuard)
   @ApiOperation({ summary: '[SANDBOX] Delete all orders, notifications, and audit logs' })
   async resetData(@Req() req: AuthenticatedRequest) {
     return this.adminService.resetData(this.actorOf(req), clientIp(req));
@@ -244,5 +246,32 @@ export class AdminController {
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
     });
+  }
+
+  // ── Site Settings ──────────────────────────────────────────
+
+  @Get('settings')
+  @ApiOperation({ summary: 'Get all site settings' })
+  async getSettings() {
+    return this.siteSettingsService.getAll();
+  }
+
+  @Post('settings')
+  @ApiOperation({ summary: 'Update site settings (batch)' })
+  async updateSettings(@Body() body: Record<string, string>, @Req() req: AuthenticatedRequest) {
+    const allowed = this.siteSettingsService.getAllowedKeys();
+    const invalid = Object.keys(body).filter(k => !allowed.has(k));
+    if (invalid.length > 0) {
+      throw new BadRequestException(`不允许的配置项: ${invalid.join(', ')}`);
+    }
+    await this.siteSettingsService.setMany(body);
+    await this.auditService.log({
+      action: 'update_settings',
+      actor: this.actorOf(req),
+      targetType: 'settings',
+      ip: clientIp(req),
+      detail: { keys: Object.keys(body) },
+    });
+    return this.siteSettingsService.getAll();
   }
 }

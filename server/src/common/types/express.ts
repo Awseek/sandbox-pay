@@ -20,8 +20,10 @@ export interface JwtPayload {
 /**
  * Request decorated by `JwtAuthGuard` (Passport attaches `user`) and/or
  * `MerchantSignatureGuard` (attaches the resolved `merchant`).
+ * `CorrelationIdMiddleware` attaches `correlationId`.
  */
 export interface AuthenticatedRequest extends Request {
   user?: JwtUser;
   merchant?: Merchant;
+  correlationId?: string;
 }

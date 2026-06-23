@@ -1,46 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, LessThan } from 'typeorm';
+import { NonceRecord } from '../../entities/nonce-record.entity';
 
 /**
- * In-memory nonce de-duplication store for replay-attack prevention.
+ * 数据库驱动的 nonce 去重存储，用于防重放攻击。
  *
- * Single-process only. For multi-instance deployments, replace with Redis SETNX + TTL.
- * Keys are auto-evicted past their TTL via lazy cleanup on each `tryConsume` call,
- * with a hard cap to prevent memory blow-up under attack.
+ * 使用 MySQL 替代内存 Map，支持多进程/多实例部署。
+ * 过期记录通过 lazy 清理 + 定时清理双机制淘汰。
  */
 @Injectable()
 export class NonceStore {
-  private readonly store = new Map<string, number>();
-  private readonly maxEntries = 100_000;
+  private readonly logger = new Logger(NonceStore.name);
+
+  constructor(
+    @InjectRepository(NonceRecord)
+    private readonly repo: Repository<NonceRecord>,
+  ) {}
 
   /**
-   * Returns true if the nonce is fresh (and stored), false if a duplicate was seen.
+   * 消费一个 nonce。返回 true 表示首次出现（已存储），false 表示重复。
    */
-  tryConsume(key: string, ttlMs: number): boolean {
-    const now = Date.now();
-    this.evictExpired(now);
+  async tryConsume(key: string, ttlMs: number): Promise<boolean> {
+    const now = new Date();
 
-    if (this.store.has(key)) {
-      const expiresAt = this.store.get(key)!;
-      if (expiresAt > now) return false;
+    // 检查是否已存在且未过期
+    const existing = await this.repo.findOne({ where: { nonce: key } });
+    if (existing && existing.expiresAt > now) {
+      return false;
     }
 
-    if (this.store.size >= this.maxEntries) {
-      // Hard cap reached — drop the oldest by re-creating map. Acceptable trade-off
-      // because expired entries should normally keep size bounded.
-      const firstKey = this.store.keys().next().value;
-      if (firstKey !== undefined) this.store.delete(firstKey);
+    // 存储新 nonce（已过期的会被覆盖）
+    const expiresAt = new Date(now.getTime() + ttlMs);
+    try {
+      await this.repo.save({ nonce: key, expiresAt });
+    } catch {
+      // 唯一约束冲突说明并发写入，视为重复
+      return false;
     }
 
-    this.store.set(key, now + ttlMs);
+    // Lazy 清理：每次调用清理一小批过期记录
+    await this.repo.delete({ expiresAt: LessThan(now) });
+
     return true;
-  }
-
-  private evictExpired(now: number) {
-    // Lazy sampling: scan a small batch each call to amortise cost.
-    let scanned = 0;
-    for (const [k, exp] of this.store) {
-      if (exp <= now) this.store.delete(k);
-      if (++scanned >= 64) break;
-    }
   }
 }

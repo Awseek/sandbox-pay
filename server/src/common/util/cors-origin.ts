@@ -14,7 +14,7 @@ export function isCorsAllowed(origin: string | undefined): boolean {
       hostname.endsWith('.we29.cn') ||
       hostname === 'we29.cn'
     );
-  } catch {
+  } catch (_) {
     return false;
   }
 }

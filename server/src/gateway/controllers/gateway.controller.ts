@@ -45,6 +45,52 @@ export class GatewayController {
     }
   }
 
+  // ── 渠道专属端点（无需传 payMethod） ────────────────────────
+
+  @Post('alipay/pay')
+  @UseGuards(MerchantSignatureGuard)
+  @ApiOperation({ summary: 'Direct: create Alipay payment order' })
+  @ApiHeader({ name: 'X-WeiPay-AppKey', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Timestamp', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Nonce', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Signature', required: true })
+  async alipayPay(@Request() req: AuthenticatedRequest, @Body() dto: Omit<CreatePaymentDto, 'payMethod'>) {
+    const merchant = req.merchant!;
+    const order = await this.paymentService.createOrder(merchant.id, { ...dto, payMethod: 'alipay' });
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return this.alipayService.createPagePay(order.orderNo, baseUrl);
+  }
+
+  @Post('paypal/pay')
+  @UseGuards(MerchantSignatureGuard)
+  @ApiOperation({ summary: 'Direct: create PayPal payment order' })
+  @ApiHeader({ name: 'X-WeiPay-AppKey', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Timestamp', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Nonce', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Signature', required: true })
+  async paypalPay(@Request() req: AuthenticatedRequest, @Body() dto: Omit<CreatePaymentDto, 'payMethod'>) {
+    const merchant = req.merchant!;
+    const order = await this.paymentService.createOrder(merchant.id, { ...dto, payMethod: 'paypal' });
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return this.paypalService.createOrder(order.orderNo, baseUrl);
+  }
+
+  @Post('native/pay')
+  @UseGuards(MerchantSignatureGuard)
+  @ApiOperation({ summary: 'Direct: create Native (escrow) payment order' })
+  @ApiHeader({ name: 'X-WeiPay-AppKey', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Timestamp', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Nonce', required: true })
+  @ApiHeader({ name: 'X-WeiPay-Signature', required: true })
+  async nativePay(@Request() req: AuthenticatedRequest, @Body() dto: Omit<CreatePaymentDto, 'payMethod'>) {
+    const merchant = req.merchant!;
+    const order = await this.paymentService.createOrder(merchant.id, { ...dto, payMethod: 'native' });
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return this.nativePayService.createOrder(order.orderNo, baseUrl);
+  }
+
+  // ── 通用查询与退款 ──────────────────────────────────────────
+
   @Get('query')
   @UseGuards(MerchantSignatureGuard)
   @ApiOperation({ summary: 'Query order status by orderNo' })

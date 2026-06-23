@@ -5,7 +5,7 @@ import { NativePayService } from '../gateways/native-pay.service';
 import { AlipayService } from '../gateways/alipay.service';
 import { PayPalService } from '../gateways/paypal.service';
 import { PaymentService } from '../services/payment.service';
-import { AdminService } from '../../admin/admin.service';
+import { MerchantService } from '../../common/services/merchant.service';
 import { ConfirmPaymentDto, SandboxConfirmDto, SwitchChannelDto } from '../dto/payment.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
@@ -22,7 +22,7 @@ export class NativePayController {
     private alipayService: AlipayService,
     private paypalService: PayPalService,
     private paymentService: PaymentService,
-    private adminService: AdminService,
+    private merchantService: MerchantService,
   ) {}
 
   @Get('cashier')
@@ -40,7 +40,7 @@ export class NativePayController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: '[SANDBOX] Create a public test order (no auth required)' })
   async publicTestPay(@Req() req: Request) {
-    const merchant = await this.adminService.findActiveMerchant();
+    const merchant = await this.merchantService.findActiveMerchant();
     const orderResult = await this.paymentService.createOrder(merchant.id, {
       amount: 0.01,
       productName: 'WeiPay 公开测试订单',
@@ -81,17 +81,15 @@ export class NativePayController {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     try {
       if (dto.channel === 'alipay') {
-        const res = await this.alipayService.createPagePay(dto.orderNo, baseUrl);
-        return { code: 200, data: res };
+        return await this.alipayService.createPagePay(dto.orderNo, baseUrl);
       } else if (dto.channel === 'paypal') {
-        const res = await this.paypalService.createOrder(dto.orderNo, baseUrl);
-        return { code: 200, data: res };
+        return await this.paypalService.createOrder(dto.orderNo, baseUrl);
       }
-      throw new BadRequestException('Unsupported payment channel');
+      throw new BadRequestException('不支持的支付渠道');
     } catch (err: unknown) {
       const message = errMessage(err);
       this.logger.error(`Switch channel error: ${message}`, errStack(err));
-      throw new BadRequestException(message || 'Gateway invocation failed');
+      throw new BadRequestException(message || '网关调用失败');
     }
   }
 

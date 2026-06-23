@@ -1,20 +1,17 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { SiteSettingsService } from '../services/site-settings.service';
 
 /**
- * Blocks access to sandbox / demo endpoints unless `ENABLE_SANDBOX=true`.
- *
- * Sandbox endpoints (test-pay, sandbox-confirm, etc.) MUST stay disabled in production
- * because they bypass merchant signature verification and can mark orders as paid.
+ * Blocks access to sandbox / demo endpoints unless ENABLE_SANDBOX=true in site_settings.
  */
 @Injectable()
 export class SandboxGuard implements CanActivate {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly settings: SiteSettingsService) {}
 
   canActivate(_context: ExecutionContext): boolean {
-    const enabled = this.configService.get<string>('ENABLE_SANDBOX', 'false') === 'true';
+    const enabled = this.settings.getBoolean('ENABLE_SANDBOX') ?? false;
     if (!enabled) {
-      throw new ForbiddenException('Sandbox endpoints are disabled in this environment');
+      throw new ForbiddenException('沙箱接口已关闭');
     }
     return true;
   }

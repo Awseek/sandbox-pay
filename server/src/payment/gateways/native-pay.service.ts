@@ -6,6 +6,7 @@ import * as QRCode from 'qrcode';
 import { PaymentOrder, OrderStatus } from '../../entities/payment-order.entity';
 import { PaymentService } from '../services/payment.service';
 import { AlipayService } from './alipay.service';
+import { SiteSettingsService } from '../../common/services/site-settings.service';
 import { toYuan } from '../../common/money';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class NativePayService {
     @InjectRepository(PaymentOrder)
     private orderRepository: Repository<PaymentOrder>,
     private configService: ConfigService,
+    private siteSettingsService: SiteSettingsService,
     private paymentService: PaymentService,
     private alipayService: AlipayService,
   ) {}
@@ -25,8 +27,8 @@ export class NativePayService {
    */
   async createOrder(orderNo: string, baseUrl: string) {
     const order = await this.orderRepository.findOne({ where: { orderNo } });
-    if (!order) throw new BadRequestException('Order not found');
-    if (order.status !== OrderStatus.Pending) throw new BadRequestException('Order not pending');
+    if (!order) throw new BadRequestException('订单不存在');
+    if (order.status !== OrderStatus.Pending) throw new BadRequestException('订单状态非待支付');
 
     const clientUrl = this.configService.get<string>('CLIENT_URL') || baseUrl;
     const cashierUrl = `${clientUrl}/cashier?orderNo=${orderNo}`;
@@ -90,7 +92,7 @@ export class NativePayService {
       }
     }
 
-    let qrCodeUrl = this.configService.get<string>('NATIVE_PAY_QR_URL', '');
+    let qrCodeUrl = this.siteSettingsService.get('native_pay.qr_url') || '';
     if (!qrCodeUrl) {
       const alipayQr = await this.alipayService.createQrPay(orderNo);
       if (alipayQr) {
@@ -100,15 +102,15 @@ export class NativePayService {
 
     return {
       orderNo: order.orderNo,
-      amount: Number(order.amount),
+      amount: toYuan(order.amount),
       productName: order.productName,
       status: 'pending',
       expireAt: order.expireAt,
       paymentInfo: {
         qrCodeUrl,
-        accountName: this.configService.get<string>('NATIVE_PAY_ACCOUNT_NAME', 'WeiPay Official'),
-        accountNo: this.configService.get<string>('NATIVE_PAY_ACCOUNT_NO', ''),
-        bankName: this.configService.get<string>('NATIVE_PAY_BANK_NAME', ''),
+        accountName: this.siteSettingsService.get('native_pay.account_name') || 'WeiPay Official',
+        accountNo: this.siteSettingsService.get('native_pay.account_no') || '',
+        bankName: this.siteSettingsService.get('native_pay.bank_name') || '',
         remark: `WP${orderNo}`,
       },
     };

@@ -1,34 +1,13 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Card } from '@heroui/react'
-import { Zap, Code, ShieldCheck, ArrowRight, LayoutDashboard, Terminal, Loader2, Play } from 'lucide-react'
+import { Zap, Code, ShieldCheck, LayoutDashboard, Terminal } from 'lucide-react'
 import ThemeToggle from '../components/ThemeToggle'
-import { api } from '../utils/api'
 
 export default function Home() {
-  const [testing, setTesting] = useState(false)
-  const [testError, setTestError] = useState('')
-
-  const handlePublicTest = async () => {
-    setTesting(true)
-    setTestError('')
-    try {
-      const res = await api.post<{ type: string; data: string }>('/native-pay/public-test-pay')
-      if (res?.data) {
-        window.location.href = res.data
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '沙箱未开启或服务不可达'
-      setTestError(msg)
-    } finally {
-      setTesting(false)
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-300 font-sans pb-16">
-      {/* Header - 极致干净极简 */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b border-border transition-colors">
+    <div className="min-h-screen bg-background text-foreground font-sans pb-16">
+      {/* Header */}
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b border-border">
         <div className="max-w-7xl mx-auto flex items-center justify-between py-4 px-6">
           <div className="flex items-center gap-3 font-semibold text-lg tracking-tight">
             <div className="p-2 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
@@ -40,9 +19,9 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Button
-              render={(props) => <Link to="/login" {...(props as any)} />}
+              render={(props) => <Link to="/admin" {...(props as any)} />}
               variant="secondary"
-              className="text-xs font-medium px-4 py-2 rounded-xl flex items-center gap-1.5 bg-surface hover:bg-surface-secondary text-foreground transition-colors h-auto min-h-0 cursor-pointer"
+              className="text-xs font-medium px-4 py-2 rounded-xl flex items-center gap-1.5 bg-surface hover:bg-surface-secondary text-foreground h-auto min-h-0 cursor-pointer"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               管理后台
@@ -62,22 +41,8 @@ export default function Home() {
 
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Button
-            onPress={handlePublicTest}
-            isDisabled={testing}
-            className="px-7 py-3.5 text-sm font-medium rounded-xl flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm transition-colors h-auto cursor-pointer disabled:opacity-50"
-          >
-            {testing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Play className="w-4 h-4 fill-current" />
-            )}
-            {testing ? '正在创建测试订单...' : '一键体验支付流程'}
-            {!testing && <ArrowRight className="w-4 h-4" />}
-          </Button>
-          <Button
-            render={(props) => <Link to="/login" {...(props as any)} />}
-            variant="secondary"
-            className="px-7 py-3.5 text-sm font-medium rounded-xl flex items-center gap-2 bg-surface hover:bg-surface-secondary text-foreground transition-colors h-auto cursor-pointer"
+            render={(props) => <Link to="/admin" {...(props as any)} />}
+            className="px-7 py-3.5 text-sm font-medium rounded-xl flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm h-auto cursor-pointer"
           >
             <LayoutDashboard className="w-4 h-4" />
             登录控制台
@@ -85,25 +50,15 @@ export default function Home() {
           <Button
             render={(props) => <a href="#api" {...(props as any)} />}
             variant="secondary"
-            className="px-7 py-3.5 text-sm font-medium rounded-xl flex items-center gap-2 bg-surface hover:bg-surface-secondary text-foreground transition-colors h-auto cursor-pointer"
+            className="px-7 py-3.5 text-sm font-medium rounded-xl flex items-center gap-2 bg-surface hover:bg-surface-secondary text-foreground h-auto cursor-pointer"
           >
             <Terminal className="w-4 h-4" />
             API 规范
           </Button>
         </div>
-
-        {testError && (
-          <p className="mt-4 text-xs text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-lg py-2 px-4 inline-block">
-            {testError}
-          </p>
-        )}
-
-        <p className="mt-6 text-xs text-muted">
-          点击「一键体验」将自动创建 0.01 元测试订单并跳转收银台（需沙箱模式开启）
-        </p>
       </section>
 
-      {/* Features - 极致清透的高定翡翠绿图标 */}
+      {/* Features */}
       <section className="py-16 max-w-5xl mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
@@ -133,8 +88,12 @@ export default function Home() {
 
         <div className="space-y-3 max-w-3xl mx-auto">
           {[
-            { method: 'POST', path: '/v1/api/gateway/pay', desc: '发起统一下单请求，根据 payMethod 路由到对应支付渠道' },
-            { method: 'GET', path: '/v1/api/gateway/query?orderNo=xxx', desc: '查询订单状态（基于本地数据库记录）' },
+            { method: 'POST', path: '/v1/api/gateway/pay', desc: '统一下单（需传 payMethod: alipay / paypal / native）' },
+            { method: 'POST', path: '/v1/api/gateway/alipay/pay', desc: '直接调用支付宝下单（无需传 payMethod）' },
+            { method: 'POST', path: '/v1/api/gateway/paypal/pay', desc: '直接调用 PayPal 下单（无需传 payMethod）' },
+            { method: 'POST', path: '/v1/api/gateway/native/pay', desc: '直接调用官方存管下单（无需传 payMethod）' },
+            { method: 'GET', path: '/v1/api/gateway/query?orderNo=xxx', desc: '查询订单状态' },
+            { method: 'POST', path: '/v1/api/gateway/refund', desc: '发起全额或部分退款（需订单已支付）' },
           ].map(api => (
             <Card key={api.path} className="p-5">
               <Card.Content className="p-0 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
@@ -180,4 +139,3 @@ export default function Home() {
     </div>
   )
 }
-

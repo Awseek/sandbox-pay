@@ -8,7 +8,7 @@ export function errMessage(err: unknown): string {
   if (typeof err === 'string') return err;
   try {
     return JSON.stringify(err);
-  } catch {
+  } catch (_) {
     return String(err);
   }
 }

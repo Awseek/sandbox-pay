@@ -10,22 +10,45 @@ WeiPay 聚合支付平台的前端，基于 **React 19 + Vite 8 + TailwindCSS 4 
 - **动画**: Framer Motion 12
 - **路由**: React Router 7
 - **图标**: lucide-react + react-icons
+- **实时通信**: socket.io-client
 
 ## 目录结构
 
 ```
 src/
 ├── pages/
-│   ├── Home.tsx         首页 / 介绍
-│   ├── Login.tsx        登录（支持 SSO 回跳）
-│   ├── Dashboard.tsx    管理后台（统计 / 订单 / 商户）
-│   ├── Cashier.tsx      收银台（订单轮询 + 多渠道支付）
-│   └── MobilePay.tsx    移动端支付页
-├── components/          复用组件（ThemeToggle …）
-├── context/             AuthContext / ThemeContext / ToastContext
-├── utils/               工具函数
-├── App.tsx              路由配置
-└── main.tsx             入口
+│   ├── Home.tsx             首页 / API 介绍
+│   ├── Login.tsx            登录路由（已登录跳转 / 未登录跳 SSO）
+│   ├── Cashier.tsx          收银台（WebSocket + 轮询、多渠道支付）
+│   └── MobilePay.tsx        移动端 H5 支付页（轮询 + 倒计时 + WebSocket）
+├── pages/admin/
+│   ├── DashboardOverview.tsx    总览仪表盘
+│   ├── OrdersPage.tsx           订单管理（筛选 / 分页 / 退款 / 删除）
+│   ├── MerchantsPage.tsx        商户管理（CRUD / 启停）
+│   ├── NotificationsPage.tsx    通知队列监控（重发）
+│   ├── ReconciliationPage.tsx   对账管理（CSV 上传 / 记录查看）
+│   ├── AuditLogsPage.tsx        审计日志
+│   └── SandboxPage.tsx          开发沙箱（密钥 / 测试下单 / 数据重置）
+├── components/
+│   ├── admin/
+│   │   └── AdminLayout.tsx      侧边栏布局（导航 / 顶栏）
+│   ├── dashboard/
+│   │   ├── MerchantKeyPanel.tsx  商户密钥面板
+│   │   ├── TestPayPanel.tsx      测试下单面板
+│   │   ├── RefundDialog.tsx      退款弹窗
+│   │   ├── DeleteConfirmDialog.tsx 删除确认弹窗
+│   │   └── types.ts              类型定义
+│   ├── RequireAuth.tsx           路由守卫
+│   └── ThemeToggle.tsx           主题切换按钮
+├── context/
+│   ├── AuthContext.tsx       认证状态（SSO 自动登录）
+│   └── ThemeContext.tsx      主题切换（深浅色）
+├── utils/
+│   ├── api.ts                HTTP 请求封装（/v1/api）
+│   ├── socket.ts             Socket.IO 订单状态订阅
+│   └── toast.ts              Toast 通知
+├── App.tsx                   路由配置
+└── main.tsx                  入口
 ```
 
 ## 路由
@@ -33,16 +56,23 @@ src/
 | 路径 | 页面 | 说明 |
 |---|---|---|
 | `/` | Home | 平台首页 |
-| `/login` | Login | 登录 / SSO 回跳 |
-| `/dashboard` | Dashboard | 管理后台（需登录） |
+| `/login` | Login | 登录路由（已登录直接跳 redirect，未登录跳 SSO） |
+| `/admin` | DashboardOverview | 控制台总览（需登录） |
+| `/admin/orders` | OrdersPage | 订单管理（需登录） |
+| `/admin/merchants` | MerchantsPage | 商户管理（需登录） |
+| `/admin/notifications` | NotificationsPage | 通知队列（需登录） |
+| `/admin/reconciliation` | ReconciliationPage | 对账管理（需登录） |
+| `/admin/audit` | AuditLogsPage | 审计日志（需登录） |
+| `/admin/sandbox` | SandboxPage | 开发沙箱（需登录） |
+| `/dashboard` | — | 重定向到 `/admin` |
 | `/cashier?orderNo=xxx` | Cashier | 收银台 |
-| `/mobile-pay` | MobilePay | 移动端支付 |
+| `/mobile-pay?orderNo=xxx` | MobilePay | 移动端支付 |
 
 ## 快速开始
 
 ```bash
 pnpm install
-pnpm dev          # 启动开发服务器 http://localhost:5173
+pnpm dev          # http://localhost:5173
 pnpm build        # 类型检查 + 生产构建
 pnpm preview      # 预览生产构建
 pnpm lint         # ESLint
@@ -58,16 +88,21 @@ cp .env.example .env.local
 
 | 变量 | 说明 |
 |---|---|
-| `VITE_API_BASE` | 后端 API 基础路径，默认走 Vite 代理 `/api` |
+| `VITE_API_BASE` | 后端 API 基础路径，默认走 Vite 代理 |
+| `VITE_SSO_LOGIN_URL` | SSO 登录页地址，默认 `https://we29.cn/login` |
 
 ## 与后端联调
 
-`vite.config.ts` 已配置开发代理：所有 `/api` 请求会转发到 `http://localhost:3000`，无需额外配置 CORS。
+`vite.config.ts` 配置了开发代理：
 
-生产环境建议反向代理（Nginx）将 `/api/*` 转发到后端服务。
+- `/v1/api/*` → `http://localhost:3000`
+- `/api/*` → `http://localhost:3000`
+- `/socket.io` → `http://localhost:3000`（WebSocket）
+
+生产环境 Nginx 反向代理同样需要配置 `/socket.io/` 的 WebSocket 升级支持。
 
 ## UI 主题
 
 - 暗色 / 亮色双主题（`ThemeContext` + `ThemeToggle`）
 - 全局选中色：emerald-500
-- 平滑过渡（400ms）
+- 主题切换瞬间完成（`theme-switching` class 禁用所有 transition）

@@ -75,8 +75,8 @@ export class PaymentService {
       returnUrl: dto.returnUrl,
       notifyUrl: dto.notifyUrl,
       merchantId,
-      // TODO: replace hard-coded placeholder once real end-user accounts are wired in.
-      userId: 1,
+      // userId: 0 = unassigned (no end-user system yet)
+      userId: 0,
       status: OrderStatus.Pending,
       expireAt,
     });
@@ -99,6 +99,7 @@ export class PaymentService {
       status: order.status,
       payMethod: order.payMethod,
       productName: order.productName,
+      returnUrl: order.returnUrl,
       payAt: order.payAt,
       thirdPartyTradeNo: order.thirdPartyTradeNo,
       createdAt: order.createdAt,
@@ -142,71 +143,75 @@ export class PaymentService {
     paidAmountCents: number,
     paidCurrency: string = 'CNY',
   ) {
-    const order = await this.orderRepository.findOne({
-      where: { orderNo },
-      relations: ['merchant'],
-    });
-    if (!order) throw new NotFoundException('订单不存在');
-    if (order.status !== OrderStatus.Pending) {
-      this.logger.warn(`Order ${orderNo} already in status ${order.status}, skip`);
+    // 事务 + 行锁防止并发回调导致重复入账
+    const order = await this.orderRepository.manager.transaction(async (txMgr) => {
+      const order = await txMgr.findOne(PaymentOrder, {
+        where: { orderNo },
+        relations: ['merchant'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) throw new NotFoundException('订单不存在');
+      if (order.status !== OrderStatus.Pending) {
+        this.logger.warn(`Order ${orderNo} already in status ${order.status}, skip`);
+        return order;
+      }
+
+      const expectedCents = order.amount;
+      const expectedForeignCents = order.foreignAmount ?? null;
+      const tolerance = 1;
+
+      let amountValid = false;
+      const currency = (paidCurrency || 'CNY').toUpperCase();
+      if (currency === 'CNY') {
+        amountValid = Math.abs(paidAmountCents - expectedCents) <= tolerance;
+      } else if (expectedForeignCents != null && currency === (order.foreignCurrency || '').toUpperCase()) {
+        amountValid = Math.abs(paidAmountCents - expectedForeignCents) <= tolerance;
+      }
+
+      if (!amountValid) {
+        this.logger.error(
+          `Amount mismatch on order ${orderNo}: gateway reported ${paidAmountCents} ${currency} (cents), ` +
+            `expected ${expectedCents} CNY / ${expectedForeignCents ?? 'n/a'} ${order.foreignCurrency ?? ''}`,
+        );
+        throw new ConflictException(
+          `订单 ${orderNo} 金额不匹配，拒绝入账`,
+        );
+      }
+
+      const fees = this.feeCalculator.calculate(order.payMethod, order.amount);
+      order.fee = fees.fee;
+      order.channelCost = fees.channelCost;
+      order.settleAmount = fees.settleAmount;
+
+      order.status = OrderStatus.Paid;
+      order.payAt = new Date();
+      order.thirdPartyTradeNo = thirdPartyTradeNo;
+      await txMgr.save(PaymentOrder, order);
+
+      this.logger.log(
+        `Order ${orderNo} marked as paid (${paidAmountCents} ${paidCurrency} cents); ` +
+          `fee=${fees.fee} cost=${fees.channelCost} settle=${fees.settleAmount}`,
+      );
       return order;
-    }
+    });
 
-    // All amounts are in integer minor units — compare exactly with 1-cent tolerance
-    // to absorb rounding from gateways that report half-cents.
-    const expectedCents = order.amount;
-    const expectedForeignCents = order.foreignAmount ?? null;
-    const tolerance = 1; // 1 cent
+    // 事务提交后再发副作用（WebSocket + 通知队列）
+    if (order.status === OrderStatus.Paid) {
+      this.paymentGateway.notifyPaymentStatus(orderNo, 'paid');
 
-    let amountValid = false;
-    const currency = (paidCurrency || 'CNY').toUpperCase();
-    if (currency === 'CNY') {
-      amountValid = Math.abs(paidAmountCents - expectedCents) <= tolerance;
-    } else if (expectedForeignCents != null && currency === (order.foreignCurrency || '').toUpperCase()) {
-      amountValid = Math.abs(paidAmountCents - expectedForeignCents) <= tolerance;
-    }
-
-    if (!amountValid) {
-      this.logger.error(
-        `Amount mismatch on order ${orderNo}: gateway reported ${paidAmountCents} ${currency} (cents), ` +
-          `expected ${expectedCents} CNY / ${expectedForeignCents ?? 'n/a'} ${order.foreignCurrency ?? ''}`,
-      );
-      throw new ConflictException(
-        `Amount mismatch for order ${orderNo} — refused to mark as paid`,
-      );
-    }
-
-    // Compute fee / settleAmount at the moment of success.
-    const fees = this.feeCalculator.calculate(order.payMethod, order.amount);
-    order.fee = fees.fee;
-    order.channelCost = fees.channelCost;
-    order.settleAmount = fees.settleAmount;
-
-    order.status = OrderStatus.Paid;
-    order.payAt = new Date();
-    order.thirdPartyTradeNo = thirdPartyTradeNo;
-    await this.orderRepository.save(order);
-
-    this.logger.log(
-      `Order ${orderNo} marked as paid (${paidAmountCents} ${currency} cents); ` +
-        `fee=${fees.fee} cost=${fees.channelCost} settle=${fees.settleAmount}`,
-    );
-
-    // Push real-time status to connected cashier clients
-    this.paymentGateway.notifyPaymentStatus(orderNo, 'paid');
-
-    if (order.notifyUrl && order.merchant) {
-      const notification: PaymentNotification = {
-        orderNo: order.orderNo,
-        externalOrderNo: order.externalOrderNo,
-        status: 'paid',
-        amount: toYuan(order.amount),
-        payMethod: order.payMethod,
-        payAt: order.payAt.toISOString(),
-        thirdPartyTradeNo,
-      };
-      const secret = this.encryptionService.decrypt(order.merchant.appSecret);
-      await this.notifyService.enqueueNotification(order.notifyUrl, notification, secret);
+      if (order.notifyUrl && order.merchant) {
+        const notification: PaymentNotification = {
+          orderNo: order.orderNo,
+          externalOrderNo: order.externalOrderNo,
+          status: 'paid',
+          amount: toYuan(order.amount),
+          payMethod: order.payMethod,
+          payAt: order.payAt!.toISOString(),
+          thirdPartyTradeNo,
+        };
+        const secret = this.encryptionService.decrypt(order.merchant.appSecret);
+        await this.notifyService.enqueueNotification(order.notifyUrl, notification, secret);
+      }
     }
 
     return order;
@@ -224,43 +229,47 @@ export class PaymentService {
     refundTradeNo: string,
     merchantIdForCheck?: number,
   ) {
-    const order = await this.orderRepository.findOne({
-      where: { orderNo },
-      relations: ['merchant'],
-    });
-    if (!order) throw new NotFoundException('订单不存在');
-    if (merchantIdForCheck !== undefined && order.merchantId !== merchantIdForCheck) {
-      throw new NotFoundException('订单不存在');
-    }
+    // 事务 + 行锁防止并发退款导致重复入账
+    const order = await this.orderRepository.manager.transaction(async (txMgr) => {
+      const order = await txMgr.findOne(PaymentOrder, {
+        where: { orderNo },
+        relations: ['merchant'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) throw new NotFoundException('订单不存在');
+      if (merchantIdForCheck !== undefined && order.merchantId !== merchantIdForCheck) {
+        throw new NotFoundException('订单不存在');
+      }
 
-    // Idempotency: same refund trade-no replayed → no-op once already settled.
-    if (order.refundTradeNo === refundTradeNo && order.status === OrderStatus.Refunded) {
+      // Idempotency: same refund trade-no replayed → no-op once already settled.
+      if (order.refundTradeNo === refundTradeNo && order.status === OrderStatus.Refunded) {
+        return order;
+      }
+
+      if (order.status !== OrderStatus.Paid && order.status !== OrderStatus.Refunding) {
+        throw new ConflictException(`订单状态不允许退款: ${order.status}`);
+      }
+
+      const newRefunded = (order.refundedAmount || 0) + refundedCents;
+      if (newRefunded - order.amount > 1) {
+        throw new BadRequestException('退款累计金额超过订单金额');
+      }
+
+      order.refundedAmount = newRefunded;
+      order.refundTradeNo = refundTradeNo;
+      order.refundAt = new Date();
+      if (Math.abs(newRefunded - order.amount) <= 1) {
+        order.status = OrderStatus.Refunded;
+      }
+      await txMgr.save(PaymentOrder, order);
+
+      this.logger.log(
+        `Order ${orderNo} refund applied: ${refundedCents} cents (total refunded ${newRefunded}, status ${order.status})`,
+      );
       return order;
-    }
+    });
 
-    if (order.status !== OrderStatus.Paid && order.status !== OrderStatus.Refunding) {
-      throw new ConflictException(`订单状态不允许退款: ${order.status}`);
-    }
-
-    const newRefunded = (order.refundedAmount || 0) + refundedCents;
-    if (newRefunded - order.amount > 1) {
-      throw new BadRequestException('退款累计金额超过订单金额');
-    }
-
-    order.refundedAmount = newRefunded;
-    order.refundTradeNo = refundTradeNo;
-    order.refundAt = new Date();
-    // Full refund → Refunded; partial → keep Paid with refundedAmount > 0
-    if (Math.abs(newRefunded - order.amount) <= 1) {
-      order.status = OrderStatus.Refunded;
-    }
-    await this.orderRepository.save(order);
-
-    this.logger.log(
-      `Order ${orderNo} refund applied: ${refundedCents} cents (total refunded ${newRefunded}, status ${order.status})`,
-    );
-
-    // Push real-time status to connected cashier clients
+    // 事务提交后再发副作用
     this.paymentGateway.notifyPaymentStatus(orderNo, order.status === OrderStatus.Refunded ? 'refunded' : 'partial_refunded');
 
     if (order.notifyUrl && order.merchant) {
@@ -284,13 +293,18 @@ export class PaymentService {
    * Mark a refund as in-flight (gateway accepted but final state pending).
    */
   async markRefunding(orderNo: string) {
-    const order = await this.orderRepository.findOne({ where: { orderNo } });
-    if (!order) throw new NotFoundException('订单不存在');
-    if (order.status === OrderStatus.Paid) {
-      order.status = OrderStatus.Refunding;
-      await this.orderRepository.save(order);
-    }
-    return order;
+    return this.orderRepository.manager.transaction(async (txMgr) => {
+      const order = await txMgr.findOne(PaymentOrder, {
+        where: { orderNo },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) throw new NotFoundException('订单不存在');
+      if (order.status === OrderStatus.Paid) {
+        order.status = OrderStatus.Refunding;
+        await txMgr.save(PaymentOrder, order);
+      }
+      return order;
+    });
   }
 
   async getOrderForRefund(orderNo: string, merchantId: number) {
@@ -303,12 +317,18 @@ export class PaymentService {
   }
 
   async markFailed(orderNo: string, reason?: string) {
-    const order = await this.orderRepository.findOne({ where: { orderNo } });
-    if (!order) throw new NotFoundException('订单不存在');
-    if (order.status !== OrderStatus.Pending) return order;
+    const order = await this.orderRepository.manager.transaction(async (txMgr) => {
+      const order = await txMgr.findOne(PaymentOrder, {
+        where: { orderNo },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) throw new NotFoundException('订单不存在');
+      if (order.status !== OrderStatus.Pending) return order;
 
-    order.status = OrderStatus.Failed;
-    await this.orderRepository.save(order);
+      order.status = OrderStatus.Failed;
+      await txMgr.save(PaymentOrder, order);
+      return order;
+    });
     this.logger.log(`Order ${orderNo} marked as failed: ${reason}`);
     this.paymentGateway.notifyPaymentStatus(orderNo, 'failed');
     return order;
@@ -320,12 +340,18 @@ export class PaymentService {
    * stuck in the Refunding state.
    */
   async markRefundFailed(orderNo: string, reason?: string) {
-    const order = await this.orderRepository.findOne({ where: { orderNo } });
-    if (!order) throw new NotFoundException('订单不存在');
-    if (order.status !== OrderStatus.Refunding) return order;
+    const order = await this.orderRepository.manager.transaction(async (txMgr) => {
+      const order = await txMgr.findOne(PaymentOrder, {
+        where: { orderNo },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) throw new NotFoundException('订单不存在');
+      if (order.status !== OrderStatus.Refunding) return order;
 
-    order.status = OrderStatus.Paid;
-    await this.orderRepository.save(order);
+      order.status = OrderStatus.Paid;
+      await txMgr.save(PaymentOrder, order);
+      return order;
+    });
     this.logger.warn(`Order ${orderNo} refund failed, rolled back to Paid: ${reason}`);
     this.paymentGateway.notifyPaymentStatus(orderNo, 'refund_failed');
     return order;

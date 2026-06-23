@@ -60,7 +60,7 @@ export class PayPalService {
 
   async createOrder(orderNo: string, baseUrl: string) {
     const order = await this.orderRepository.findOne({ where: { orderNo } });
-    if (!order) throw new BadRequestException('Order not found');
+    if (!order) throw new BadRequestException('订单不存在');
 
     const rate = await this.exchangeRateService.getCnyToUsdRateAsync();
     // order.amount is CNY cents; convert to USD cents via the rate.
@@ -93,12 +93,12 @@ export class PayPalService {
       const response = await this.client.execute<PayPalOrderResult>(request);
       const approveUrl = response.result?.links?.find(link => link.rel === 'approve')?.href;
       if (!approveUrl) {
-        throw new Error('PayPal response missing approve link');
+        throw new Error('PayPal 响应缺少确认链接');
       }
       return { type: 'url', data: approveUrl };
     } catch (err: unknown) {
       this.logger.error(`PayPal order creation failed: ${errMessage(err)}`, errStack(err));
-      throw new BadRequestException('PayPal integration failed');
+      throw new BadRequestException('PayPal 下单失败');
     }
   }
 

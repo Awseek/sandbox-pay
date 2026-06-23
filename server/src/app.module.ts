@@ -12,6 +12,8 @@ import { PaymentOrder } from './entities/payment-order.entity';
 import { NotifyQueue } from './entities/notify-queue.entity';
 import { ReconciliationRecord } from './entities/reconciliation-record.entity';
 import { AuditLog } from './entities/audit-log.entity';
+import { SiteSetting } from './entities/site-setting.entity';
+import { NonceRecord } from './entities/nonce-record.entity';
 
 // Modules
 import { CommonModule } from './common/common.module';
@@ -46,7 +48,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        entities: [User, Merchant, PaymentOrder, NotifyQueue, ReconciliationRecord, AuditLog],
+        entities: [User, Merchant, PaymentOrder, NotifyQueue, ReconciliationRecord, AuditLog, SiteSetting, NonceRecord],
         synchronize: configService.get<string>('DB_SYNCHRONIZE', 'false') === 'true',
         logging: configService.get<string>('DB_LOGGING', 'false') === 'true',
         extra: {

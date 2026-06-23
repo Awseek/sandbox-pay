@@ -36,7 +36,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme])
 
   const toggleTheme = () => {
+    // 瞬间切换：加 class 禁掉所有 transition，切完再移除
+    document.documentElement.classList.add('theme-switching')
     setThemeState(prev => (prev === 'dark' ? 'light' : 'dark'))
+    // 一帧后移除，让后续交互的 hover/focus transition 恢复
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove('theme-switching')
+      })
+    })
   }
 
   return (

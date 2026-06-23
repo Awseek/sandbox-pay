@@ -63,7 +63,31 @@ async function bootstrap() {
   // Swagger
   const config = new DocumentBuilder()
     .setTitle('WeiPay API')
-    .setDescription('The WeiPay API description')
+    .setDescription(
+      'WeiPay is an aggregated payment gateway that unifies multiple payment ' +
+        'channels (WeChat Pay, Alipay, etc.) behind a single REST API.\n\n' +
+        '**Authentication**\n' +
+        '- **Admin endpoints** — JWT Bearer token obtained from `/auth/login`. ' +
+        'Pass the token in the `Authorization: Bearer <token>` header.\n' +
+        '- **Merchant gateway** — HMAC-SHA256 request signing. ' +
+        'Sign the payload with your merchant secret and include the signature ' +
+        'in the `X-Signature` header.\n\n' +
+        '**Common Error Codes**\n' +
+        '| Code | Meaning |\n' +
+        '| --- | --- |\n' +
+        '| 400 | Bad Request — validation failed or malformed payload |\n' +
+        '| 401 | Unauthorized — missing or invalid credentials |\n' +
+        '| 403 | Forbidden — insufficient permissions for the resource |\n' +
+        '| 404 | Not Found — the requested resource does not exist |\n' +
+        '| 409 | Conflict — duplicate order or state conflict |\n' +
+        '| 429 | Too Many Requests — rate limit exceeded |\n\n' +
+        '**Rate Limiting**\n' +
+        'Endpoints are throttled per IP address. The default limits are ' +
+        '60 requests/minute for unauthenticated requests and 120 requests/minute ' +
+        'for authenticated requests. When the limit is exceeded, the API returns ' +
+        '`429 Too Many Requests` with a `Retry-After` header indicating how many ' +
+        'seconds to wait before retrying.',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

@@ -89,5 +89,5 @@ export class AuditService {
 }
 
 function safeParse(s: string): unknown {
-  try { return JSON.parse(s); } catch { return s; }
+  try { return JSON.parse(s); } catch (_) { return s; }
 }

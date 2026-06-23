@@ -4,14 +4,35 @@ import { setToken, clearToken } from '../utils/api'
 interface AuthContextType {
   isLoggedIn: boolean
   loading: boolean
+  username: string
+  role: string
   logout: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType>({ isLoggedIn: false, loading: true, logout: async () => {} })
+const AuthContext = createContext<AuthContextType>({
+  isLoggedIn: false,
+  loading: true,
+  username: '',
+  role: '',
+  logout: async () => {},
+})
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [loading, setLoading] = useState(true)
+  // 同步从 localStorage 初始化，避免首帧 isLoggedIn=false 导致 Login 页闪"请登录"
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('token'))
+  const [loading, setLoading] = useState(() => !localStorage.getItem('token'))
+  const [username, setUsername] = useState(() => localStorage.getItem('username') || '')
+  const [role, setRole] = useState(() => localStorage.getItem('role') || '')
+
+  const applyAuth = (token: string, user: string, userRole: string) => {
+    localStorage.setItem('token', token)
+    localStorage.setItem('username', user)
+    localStorage.setItem('role', userRole)
+    setToken(token)
+    setUsername(user)
+    setRole(userRole)
+    setIsLoggedIn(true)
+  }
 
   useEffect(() => {
     // 1. 已有本地 token，直接用
@@ -31,9 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .then(data => {
         if (data.code === 200 && data.data?.token) {
-          localStorage.setItem('token', data.data.token)
-          setToken(data.data.token)
-          setIsLoggedIn(true)
+          applyAuth(data.data.token, data.data.username || '', data.data.role || '')
         }
       })
       .catch(() => {
@@ -43,22 +62,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = async () => {
-    try {
-      await fetch('/v1/api/auth/sso/logout', {
-        method: 'POST',
-        credentials: 'include',
-      })
-    } catch {
-      // 忽略
-    }
-
     clearToken()
     localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    localStorage.removeItem('role')
+    setUsername('')
+    setRole('')
     setIsLoggedIn(false)
   }
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, loading, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, loading, username, role, logout }}>
       {children}
     </AuthContext.Provider>
   )

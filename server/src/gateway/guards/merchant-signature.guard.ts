@@ -32,27 +32,27 @@ export class MerchantSignatureGuard implements CanActivate {
     const signature = request.headers['x-weipay-signature'];
 
     if (!appKey || !timestamp || !nonce || !signature) {
-      throw new UnauthorizedException('Missing security headers');
+      throw new UnauthorizedException('缺少安全请求头');
     }
 
     const merchant = await this.merchantRepository.findOne({
       where: { appKey, isActive: true },
     });
     if (!merchant) {
-      throw new UnauthorizedException('Invalid AppKey or inactive merchant');
+      throw new UnauthorizedException('无效的 AppKey 或商户已停用');
     }
 
     // Time window check (5 minutes)
     const now = Date.now();
     const requestTime = parseInt(timestamp, 10);
     if (isNaN(requestTime) || Math.abs(now - requestTime) > TIMESTAMP_WINDOW_MS) {
-      throw new UnauthorizedException('Timestamp expired or invalid');
+      throw new UnauthorizedException('时间戳已过期或无效');
     }
 
     // Replay protection: nonce must be unique within the time window, scoped per merchant
     const nonceKey = `${appKey}:${nonce}`;
-    if (!this.nonceStore.tryConsume(nonceKey, NONCE_TTL_MS)) {
-      throw new UnauthorizedException('Duplicate nonce — possible replay');
+    if (!(await this.nonceStore.tryConsume(nonceKey, NONCE_TTL_MS))) {
+      throw new UnauthorizedException('Nonce 重复，疑似重放攻击');
     }
 
     // Canonical payload: GET signs the sorted query string (excluding signature headers),
@@ -67,7 +67,7 @@ export class MerchantSignatureGuard implements CanActivate {
     const isValid = this.signatureService.verify(payload, secret, signature);
 
     if (!isValid) {
-      throw new UnauthorizedException('Invalid signature');
+      throw new UnauthorizedException('签名验证失败');
     }
 
     request['merchant'] = merchant;

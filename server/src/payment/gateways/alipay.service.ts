@@ -44,8 +44,8 @@ export class AlipayService {
 
   async createPagePay(orderNo: string, baseUrl: string) {
     const order = await this.orderRepository.findOne({ where: { orderNo } });
-    if (!order) throw new BadRequestException('Order not found');
-    if (order.status !== OrderStatus.Pending) throw new BadRequestException('Order not pending');
+    if (!order) throw new BadRequestException('订单不存在');
+    if (order.status !== OrderStatus.Pending) throw new BadRequestException('订单状态非待支付');
 
     const notifyUrl = `${baseUrl}/api/alipay/notify`;
     const clientUrl = this.configService.get<string>('CLIENT_URL') || baseUrl;
@@ -70,7 +70,7 @@ export class AlipayService {
       return { type: 'form', data: result };
     } catch (err: unknown) {
       this.logger.error(`Alipay page pay error: ${errMessage(err)}`, errStack(err));
-      throw new InternalServerErrorException('Failed to generate Alipay payment form');
+      throw new InternalServerErrorException('生成支付宝支付表单失败');
     }
   }
 
@@ -194,7 +194,8 @@ export class AlipayService {
         }
       }
       return false;
-    } catch {
+    } catch (err: unknown) {
+      this.logger.error(`Alipay queryAlipayTrade error for ${orderNo}: ${errMessage(err)}`);
       return false;
     }
   }

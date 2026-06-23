@@ -6,8 +6,9 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { redact } from '../logging/redact';
+import type { AuthenticatedRequest } from '../types/express';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -16,7 +17,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<AuthenticatedRequest>();
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
@@ -27,15 +28,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal server error';
 
-    // Redact sensitive fields before they hit any log sink.
     const safeMessage = redact(message);
     this.logger.error(
       `Http Status: ${status} Error Message: ${JSON.stringify(safeMessage)}`,
       exception instanceof Error ? exception.stack : '',
     );
 
-    const msgText = typeof message === 'object' ? (message as any).message : message;
-    const finalMsg = Array.isArray(msgText) ? msgText[0] : msgText;
+    const msgText = typeof message === 'object' && message !== null
+      ? (message as Record<string, unknown>).message ?? JSON.stringify(message)
+      : message;
+    const finalMsg = Array.isArray(msgText) ? msgText[0] : String(msgText);
 
     response.status(status).json({
       statusCode: status,
@@ -44,7 +46,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path: request.url,
       message: finalMsg,
       msg: finalMsg,
-      correlationId: (request as any)['correlationId'],
+      correlationId: request.correlationId,
     });
   }
 }

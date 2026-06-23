@@ -2,10 +2,9 @@ import { Controller, Get, Query, Response, Logger } from '@nestjs/common';
 import type { Response as ExpressResponse } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PaymentOrder, OrderStatus } from '../../entities/payment-order.entity';
+import { PaymentService } from '../services/payment.service';
 import { PayPalService } from '../gateways/paypal.service';
+import { OrderStatus } from '../../entities/payment-order.entity';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('PayPal')
@@ -14,14 +13,13 @@ export class PayPalController {
   private readonly logger = new Logger(PayPalController.name);
 
   constructor(
-    @InjectRepository(PaymentOrder)
-    private orderRepository: Repository<PaymentOrder>,
+    private paymentService: PaymentService,
     private paypalService: PayPalService,
     private configService: ConfigService,
   ) {}
 
   @Get('callback')
-  @Throttle({ default: { limit: 10, ttl: 60_000 } }) // 10 requests per minute
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'PayPal return callback - capture and redirect' })
   async callback(
     @Query('orderNo') orderNo: string,
@@ -31,8 +29,13 @@ export class PayPalController {
   ) {
     if (!orderNo) return res.redirect('/?error=missing_order_no');
 
-    const order = await this.orderRepository.findOne({ where: { orderNo } });
-    if (!order) return res.redirect('/?error=order_not_found');
+    // 通过 PaymentService 查询订单，不再直接访问 repo
+    let order: Awaited<ReturnType<typeof this.paymentService.queryOrder>>;
+    try {
+      order = await this.paymentService.queryOrder(orderNo);
+    } catch {
+      return res.redirect('/?error=order_not_found');
+    }
 
     const clientUrl = this.configService.get<string>('CLIENT_URL') || '';
     const defaultReturnUrl = clientUrl ? `${clientUrl}/cashier` : '/cashier';
@@ -42,7 +45,6 @@ export class PayPalController {
       return res.redirect(this.buildReturnUrl(returnUrl, orderNo, 'cancelled'));
     }
 
-    // Only capture if order is still pending — prevents duplicate captures
     if (order.status !== OrderStatus.Pending) {
       this.logger.warn(`PayPal callback for non-pending order ${orderNo} (status: ${order.status}), skipping capture`);
       return res.redirect(this.buildReturnUrl(returnUrl, orderNo, order.status === OrderStatus.Paid ? 'success' : 'failed'));

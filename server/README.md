@@ -1,120 +1,112 @@
 # WeiPay Server
 
-WeiPay 聚合支付平台的后端服务，基于 **NestJS 11 + TypeORM + MySQL** 构建，提供商户管理、聚合下单、第三方支付网关回调、异步通知重试、管理后台 API 等能力。
+WeiPay 聚合支付平台的后端服务，基于 **NestJS 11 + TypeORM + MySQL** 构建。
 
 ## 技术栈
 
 - **框架**: NestJS 11 (Express)
 - **数据库**: MySQL 8 + TypeORM 0.3
-- **鉴权**: Passport-JWT
+- **鉴权**: Passport-JWT + SSO (we29.cn 共享 cookie)
 - **支付渠道**: 支付宝 (alipay-sdk)、PayPal (Checkout Server SDK)、自有兜底通道 (Native)
-- **实时通信**: Socket.IO（订单状态推送）
-- **API 文档**: Swagger (`/api/docs`)
-- **定时任务**: `@nestjs/schedule` + cron（异步通知重试）
-- **日志**: Winston + nest-winston
+- **实时通信**: Socket.IO（订单状态推送到收银台）
+- **API 文档**: Swagger (`/v1/api/docs`)
+- **定时任务**: `@nestjs/schedule` + cron（异步通知重试、订单过期清理）
+- **日志**: Winston
 - **校验**: class-validator + 全局 ValidationPipe
 
 ## 目录结构
 
 ```
 src/
-├── auth/          JWT 鉴权 + SSO 回调 (we29.cn)
-├── admin/         管理后台 API（统计 / 订单 / 商户）
-├── payment/       支付核心
-│   ├── controllers/   alipay / paypal / native-pay
-│   ├── gateways/      第三方网关封装
-│   ├── services/      统一下单服务
-│   └── payment.gateway.ts   Socket.IO Gateway
-├── gateway/       商户接入网关（签名校验 + 回调）
-├── common/        异常过滤器 / 响应拦截器 / Correlation-Id / 定时任务
-├── entities/      User / Merchant / PaymentOrder / NotifyQueue
-└── main.ts        入口（全局管道 / 过滤器 / Swagger / CORS）
+├── auth/              JWT 鉴权 + SSO 自动登录
+├── admin/             管理后台 API（统计 / 订单 / 商户 / 通知 / 对账 / 审计）
+├── payment/           支付核心
+│   ├── controllers/       alipay / paypal / native-pay 回调与操作
+│   ├── gateways/          第三方网关封装（alipay-sdk / paypal-sdk / native）
+│   ├── services/          统一下单 / 退款服务
+│   ├── dto/               请求校验 DTO
+│   └── payment.gateway.ts Socket.IO Gateway（实时状态推送）
+├── gateway/           商户接入网关（HMAC-SHA256 签名校验）
+├── common/            公共模块
+│   ├── filters/           全局异常过滤器
+│   ├── guards/            沙箱守卫 / 限流
+│   ├── interceptors/      响应包装拦截器
+│   ├── logging/           Winston 配置 + 日志脱敏
+│   ├── middleware/        Correlation-Id 中间件
+│   ├── services/          加密 / 签名 / 汇率 / 手续费 / 通知队列 / 审计 / 非对存储
+│   ├── tasks/             定时任务（订单过期清理）
+│   └── util/              CORS / 错误处理 / 请求工具 / 环境校验
+├── entities/          数据实体（User / Merchant / PaymentOrder / NotifyQueue / ReconciliationRecord / AuditLog）
+├── migrations/        TypeORM 迁移脚本
+├── health/            健康检查端点
+└── main.ts            入口（全局管道 / 过滤器 / Swagger / CORS / Helmet）
 ```
 
 ## 快速开始
 
-### 1. 安装依赖
-
 ```bash
 pnpm install
+cp .env.example .env   # 填写数据库 / JWT / 第三方凭证
+pnpm dev               # http://localhost:3000
 ```
 
-### 2. 配置环境变量
+API 文档：<http://localhost:3000/v1/api/docs>
 
-复制 `.env.example` 为 `.env` 并填写：
+## API 模块
 
-```bash
-cp .env.example .env
-```
+所有业务接口以 `/v1/api/` 为前缀（URI 版本策略）。
 
-关键变量：
+| 路径前缀 | 模块 | 鉴权 | 说明 |
+|---|---|---|---|
+| `/v1/api/auth` | Auth | — | SSO 自动登录（共享 cookie） |
+| `/v1/api/admin` | Admin | JWT | 统计、订单、商户、通知、对账、审计、沙箱 |
+| `/v1/api/gateway` | Gateway | HMAC 签名 | 商户接入：下单、查询、退款 |
+| `/v1/api/native-pay` | NativePay | 混合 | 收银台、沙箱确认、渠道切换、公开测试 |
+| `/v1/api/alipay` | Alipay | — | 支付宝异步通知回调 |
+| `/v1/api/paypal` | PayPal | — | PayPal return callback |
+| `/health` | Health | — | 健康检查（Docker healthcheck） |
 
-| 变量 | 说明 |
-|---|---|
-| `PORT` | 服务端口，默认 3000 |
-| `DB_*` | MySQL 连接配置 |
-| `DB_SYNCHRONIZE` | **生产必须设为 `false`**，开发可设 `true` |
-| `JWT_SECRET` | JWT 签名密钥（必填） |
-| `GATEWAY_SECRET` | 商户接入网关签名密钥 |
-| `CLIENT_URL` | 客户端地址，用于 SSO 重定向 |
-| `ALIPAY_*` | 支付宝沙箱/正式凭证 |
-| `PAYPAL_*` | PayPal 应用凭证 |
-| `ENCRYPTION_KEY` | 商户密钥加密密钥（生产必填） |
-| `PAYPAL_ENVIRONMENT` | PayPal 环境：sandbox / live |
+## Admin API 详情
 
-### 3. 初始化数据库
-
-确保已创建数据库（默认 `wepay_db`）。开发模式下 `DB_SYNCHRONIZE=true` 会自动建表。
-
-### 4. 启动
-
-```bash
-# 开发（热重载）
-pnpm dev
-
-# 生产构建
-pnpm build && pnpm start:prod
-```
-
-启动后：
-
-- API: <http://localhost:3000>
-- Swagger 文档: <http://localhost:3000/api/docs>
-
-## 主要 API 模块
-
-所有业务接口均以 `/v1/api/` 为前缀（URI 版本策略）。
-
-| 路径前缀 | 模块 | 说明 |
+| 方法 | 路径 | 说明 |
 |---|---|---|
-| `/v1/api/auth` | Auth | SSO 回调（we29.cn） |
-| `/v1/api/admin` | Admin | 统计、订单列表、商户管理（需 JWT） |
-| `/v1/api/native-pay` | NativePay | 收银台数据 / 沙箱确认 / 渠道切换 |
-| `/v1/api/alipay` | Alipay | 支付宝下单 + 异步通知 |
-| `/v1/api/paypal` | PayPal | PayPal 下单 + capture |
-| `/v1/api/gateway` | Gateway | 商户接入下单（签名校验） |
+| GET | `/admin/stats` | 交易统计（总额 / 成功率） |
+| GET | `/admin/transactions` | 订单列表（分页 / 筛选） |
+| DELETE | `/admin/transactions/:orderNo` | 删除订单 |
+| POST | `/admin/refund` | 管理员退款 |
+| GET | `/admin/merchant` | 当前商户信息 |
+| GET | `/admin/merchants` | 商户列表 |
+| POST | `/admin/merchants` | 创建商户 |
+| POST | `/admin/merchants/:id` | 编辑商户 |
+| POST | `/admin/merchants/:id/toggle` | 启停商户 |
+| POST | `/admin/merchant/reset-secret` | 重置商户密钥 |
+| POST | `/admin/test-pay` | 创建测试订单 |
+| GET | `/admin/notifications` | 通知队列列表 |
+| POST | `/admin/notifications/:id/replay` | 重发通知 |
+| POST | `/admin/reconciliation/upload` | 上传对账 CSV |
+| GET | `/admin/reconciliation` | 对账记录列表 |
+| GET | `/admin/audit-logs` | 审计日志 |
+| POST | `/admin/reset-data` | 清除沙箱数据 |
 
 ## 架构要点
 
-- **全局响应包装**: `TransformInterceptor` 统一返回 `{ code, data, msg }`
-- **全局异常**: `AllExceptionsFilter` 捕获并格式化所有异常
-- **CorrelationId 中间件**: 每个请求注入唯一 ID，便于链路追踪
-- **异步通知队列**: `NotifyQueue` 表 + 定时任务对商户回调失败做指数退避重试
-- **聚合下单**: 商户调用 `/api/gateway` 创建订单，后端按规则路由到支付宝 / PayPal / 自有兜底
+- **全局响应包装**: `TransformInterceptor` → `{ code, data, msg }`
+- **全局异常**: `AllExceptionsFilter` 统一格式化
+- **Correlation-Id**: 每个请求注入唯一 ID
+- **异步通知**: `NotifyQueue` + cron 指数退避重试（5s → 15s → 60s → 5min → 15min）
+- **金额安全**: 所有金额以整数分存储，浮点转换仅在 API 边界
+- **幂等下单**: 基于 `(merchantId, externalOrderNo)` 去重
+- **通知签名**: 每次回调携带 HMAC-SHA256 签名，商户可验真
+- **Socket.IO**: 支付成功后实时推送到收银台，HTTP 轮询兜底
 
 ## 开发命令
 
 ```bash
-pnpm dev          # 开发模式
-pnpm build        # 编译
-pnpm start:prod   # 运行编译产物
-pnpm lint         # ESLint 修复
-pnpm format       # Prettier 格式化
+pnpm dev            # 开发模式（热重载）
+pnpm build          # 编译
+pnpm start:prod     # 运行编译产物
+pnpm lint           # ESLint 修复
+pnpm format         # Prettier 格式化
+pnpm test           # 单元测试
+pnpm test:e2e       # 端到端测试
 ```
-
-## 安全注意事项
-
-- 生产环境务必设置 `DB_SYNCHRONIZE=false`，使用迁移脚本管理表结构
-- `JWT_SECRET` / `GATEWAY_SECRET` 必须使用足够长度的随机串
-- 不要将 `.env` 提交到仓库
-- 支付宝 / PayPal 凭证使用环境变量注入，避免硬编码
