@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -19,6 +20,9 @@ async function bootstrap() {
 
   // Graceful shutdown — wait for in-flight requests to complete before exiting
   app.enableShutdownHooks();
+
+  // Cookie parser — 读取共享 cookie（we29_refresh_token）
+  app.use(cookieParser());
 
   // API versioning — URI-based with v1 as default.
   // Existing routes (no explicit version) remain at /api/xxx for backward

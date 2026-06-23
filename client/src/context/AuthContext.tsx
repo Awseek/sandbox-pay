@@ -14,21 +14,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // 1. 已有本地 token，直接用
     const token = localStorage.getItem('token')
-    setIsLoggedIn(!!token)
-    if (token) setToken(token)
-    setLoading(false)
+    if (token) {
+      setToken(token)
+      setIsLoggedIn(true)
+      setLoading(false)
+      return
+    }
+
+    // 2. 没有 token，尝试共享 cookie 无感登录
+    fetch('/v1/api/auth/auto-login', { credentials: 'include' })
+      .then(res => {
+        if (!res.ok) throw new Error('no session')
+        return res.json()
+      })
+      .then(data => {
+        if (data.code === 200 && data.data?.token) {
+          localStorage.setItem('token', data.data.token)
+          setToken(data.data.token)
+          setIsLoggedIn(true)
+        }
+      })
+      .catch(() => {
+        // 没有共享登录态，用户需要先在 we29.cn 登录
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const logout = async () => {
-    // 调用 SSO 单点登出（撤销 SSO refresh_token）
     try {
       await fetch('/v1/api/auth/sso/logout', {
         method: 'POST',
         credentials: 'include',
       })
     } catch {
-      // 忽略网络错误，仍然清除本地状态
+      // 忽略
     }
 
     clearToken()
