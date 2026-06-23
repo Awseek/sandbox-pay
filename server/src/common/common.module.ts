@@ -6,6 +6,7 @@ import { PaymentOrder } from '../entities/payment-order.entity';
 import { AuditLog } from '../entities/audit-log.entity';
 import { SiteSetting } from '../entities/site-setting.entity';
 import { NonceRecord } from '../entities/nonce-record.entity';
+import { Merchant } from '../entities/merchant.entity';
 import { NotifyService } from './services/notify.service';
 import { SignatureService } from './services/signature.service';
 import { OrderNumberGenerator } from './services/order-number-generator.service';
@@ -22,7 +23,7 @@ import { OrderCleanupTask } from './tasks/order-cleanup.task';
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([NotifyQueue, PaymentOrder, AuditLog, SiteSetting, NonceRecord]),
+    TypeOrmModule.forFeature([NotifyQueue, PaymentOrder, AuditLog, SiteSetting, NonceRecord, Merchant]),
     HttpModule,
   ],
   providers: [
