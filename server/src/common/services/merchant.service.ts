@@ -45,8 +45,8 @@ export class MerchantService implements OnModuleInit {
     if (!merchant) {
       const plain = this.generateSecret();
       merchant = this.merchantRepository.create({
-        name: 'WeiPay Sandbox Merchant',
-        appKey: 'wp_sandbox_' + crypto.randomBytes(6).toString('hex'),
+        name: 'Sandbox Pay Merchant',
+        appKey: 'sp_sandbox_' + crypto.randomBytes(6).toString('hex'),
         appSecret: this.encryptionService.encrypt(plain),
         isActive: true,
       });
@@ -112,7 +112,7 @@ export class MerchantService implements OnModuleInit {
     const plain = this.generateSecret();
     const merchant = this.merchantRepository.create({
       name: name.trim(),
-      appKey: 'wp_' + crypto.randomBytes(8).toString('hex'),
+      appKey: 'sp_' + crypto.randomBytes(8).toString('hex'),
       appSecret: this.encryptionService.encrypt(plain),
       isActive: true,
     });

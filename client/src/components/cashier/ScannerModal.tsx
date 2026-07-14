@@ -29,7 +29,7 @@ export default function ScannerModal({ isOpen, onOpenChange, orderNo, amount, on
     try {
       await api.post('/native-pay/sandbox-confirm', {
         orderNo,
-        walletUser: 'app_scan@weipay.cn',
+        walletUser: 'app_scan@sandbox-pay.local',
         walletPass: '123456',
       })
       setStep('success')
@@ -55,7 +55,7 @@ export default function ScannerModal({ isOpen, onOpenChange, orderNo, amount, on
             </div>
 
             <Modal.Header className="w-full flex items-center justify-between pt-4 pb-2 border-b border-neutral-800 text-xs px-0">
-              <Modal.Heading className="font-semibold tracking-wide text-neutral-300">WeiPay App - 扫一扫</Modal.Heading>
+              <Modal.Heading className="font-semibold tracking-wide text-neutral-300">Sandbox Pay App - 扫一扫</Modal.Heading>
               <Modal.CloseTrigger className="text-neutral-400 hover:text-white text-sm font-bold p-1 cursor-pointer h-auto min-h-0 min-w-0 bg-transparent" />
             </Modal.Header>
 
@@ -79,7 +79,7 @@ export default function ScannerModal({ isOpen, onOpenChange, orderNo, amount, on
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs text-neutral-400">支付给</div>
-                    <div className="font-bold text-base tracking-tight text-white">WeiPay 官方存管清算网关</div>
+                    <div className="font-bold text-base tracking-tight text-white">Sandbox Pay 官方存管清算网关</div>
                     <div className="text-2xl font-mono font-bold text-emerald-400 pt-1">¥ {amount.toFixed(2)}</div>
                   </div>
                   <div className="bg-neutral-800/80 rounded-2xl p-3.5 text-left text-[11px] space-y-2 border border-neutral-700/50 font-mono">
@@ -89,7 +89,7 @@ export default function ScannerModal({ isOpen, onOpenChange, orderNo, amount, on
                     </div>
                     <div className="flex justify-between text-neutral-400">
                       <span>扣款账户：</span>
-                      <span className="text-emerald-400 font-bold">沙盒模拟钱包 (可用 ¥88,888.00)</span>
+                      <span className="text-emerald-400 font-bold">沙箱模拟钱包 (可用 ¥88,888.00)</span>
                     </div>
                   </div>
                   <Button

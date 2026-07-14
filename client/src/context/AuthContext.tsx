@@ -24,18 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [username, setUsername] = useState(() => localStorage.getItem('username') || '')
   const [role, setRole] = useState(() => localStorage.getItem('role') || '')
 
-  const applyAuth = (token: string, user: string, userRole: string) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('username', user)
-    localStorage.setItem('role', userRole)
-    setToken(token)
-    setUsername(user)
-    setRole(userRole)
-    setIsLoggedIn(true)
-  }
-
   useEffect(() => {
-    // 1. 已有本地 token，直接用
+    // 兼容切换前签发的本地 token
     const token = localStorage.getItem('token')
     if (token) {
       setToken(token)
@@ -44,24 +34,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // 2. 没有 token，尝试共享 cookie 无感登录
-    fetch('/v1/api/auth/auto-login', { credentials: 'include' })
+    // 新模式：读取本应用 host-only HttpOnly Cookie，不再读取跨子域共享 Cookie
+    fetch('/v1/api/auth/session', { credentials: 'include' })
       .then(res => {
         if (!res.ok) throw new Error('no session')
         return res.json()
       })
-      .then(data => {
-        if (data.code === 200 && data.data?.token) {
-          applyAuth(data.data.token, data.data.username || '', data.data.role || '')
+      .then(payload => {
+        const data = payload.data || payload
+        if (data?.username) {
+          localStorage.setItem('username', data.username)
+          localStorage.setItem('role', data.role || '')
+          setUsername(data.username)
+          setRole(data.role || '')
+          setIsLoggedIn(true)
         }
       })
-      .catch(() => {
-        // 没有共享登录态，用户需要先在 we29.cn 登录
-      })
+      .catch(() => setIsLoggedIn(false))
       .finally(() => setLoading(false))
   }, [])
 
   const logout = async () => {
+    await fetch('/v1/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => undefined)
     clearToken()
     localStorage.removeItem('token')
     localStorage.removeItem('username')

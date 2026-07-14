@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext'
 
 /**
  * 路由级认证守卫。
- * 未登录时跳转 /login（由 Login 页处理 SSO 跳转 + 回跳）。
+ * 未登录时跳转 /login（登录入口暂未接入，Login 页显示占位提示）。
  */
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, loading } = useAuth()

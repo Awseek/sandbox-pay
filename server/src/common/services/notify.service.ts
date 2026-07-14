@@ -84,9 +84,9 @@ export class NotifyService {
       const response = await firstValueFrom(
         this.httpService.post(item.url, JSON.parse(item.body), {
           headers: {
-            'X-WeiPay-Timestamp': sigInfo.timestamp,
-            'X-WeiPay-Nonce': sigInfo.nonce,
-            'X-WeiPay-Signature': sigInfo.sign,
+            'X-Sandbox-Pay-Timestamp': sigInfo.timestamp,
+            'X-Sandbox-Pay-Nonce': sigInfo.nonce,
+            'X-Sandbox-Pay-Signature': sigInfo.sign,
             'Content-Type': 'application/json',
           },
           timeout: 5000,

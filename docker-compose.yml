@@ -39,7 +39,6 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       ENABLE_SANDBOX: ${ENABLE_SANDBOX:-false}
       CLIENT_URL: ${CLIENT_URL:-http://localhost}
-      SSO_BASE_URL: ${SSO_BASE_URL:-http://host.docker.internal:3002}
       THROTTLE_TTL_MS: ${THROTTLE_TTL_MS:-60000}
       THROTTLE_LIMIT: ${THROTTLE_LIMIT:-60}
       EXCHANGE_RATE_PROVIDER: ${EXCHANGE_RATE_PROVIDER:-open-er-api}

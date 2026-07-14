@@ -29,8 +29,9 @@ describe('SiteSettingsService', () => {
 
     it('does not seed when DB already has settings', async () => {
       const { service, deps } = createService();
-      deps.repo.find.mockResolvedValueOnce([{ key: 'ENABLE_SANDBOX', value: 'true' }]);
-      deps.repo.find.mockResolvedValueOnce([{ key: 'ENABLE_SANDBOX', value: 'true' }]);
+      const existing = [...service.getAllowedKeys()].map(key => ({ key, value: 'configured' }));
+      deps.repo.find.mockResolvedValueOnce(existing);
+      deps.repo.find.mockResolvedValueOnce(existing);
 
       await service.onModuleInit();
 

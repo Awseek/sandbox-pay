@@ -15,8 +15,8 @@ export default function SandboxPage() {
   const { logout } = useAuth()
 
   const [merchant, setMerchant] = useState<MerchantInfo>({
-    name: 'WeiPay Sandbox Merchant',
-    appKey: 'wp_sandbox_...',
+    name: 'Sandbox Pay Merchant',
+    appKey: 'sp_sandbox_...',
     appSecret: '••••••••••••••••••••••••••••',
   })
   const [copiedKey, setCopiedKey] = useState(false)

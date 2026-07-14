@@ -124,7 +124,7 @@ export default function Cashier() {
         }
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '沙盒凭证过期或连接受阻'
+      const message = err instanceof Error ? err.message : '沙箱凭证过期或连接受阻'
       toast.error('网关调用异常: ' + message)
     } finally {
       setSwitching(false)
@@ -137,7 +137,7 @@ export default function Cashier() {
     try {
       await api.post('/native-pay/sandbox-confirm', {
         orderNo: info.orderNo,
-        walletUser: walletUser || 'demo_buyer@weipay.cn',
+        walletUser: walletUser || 'demo_buyer@sandbox-pay.local',
         walletPass: walletPass || '123456',
       })
       toast.success('支付成功')
@@ -159,7 +159,7 @@ export default function Cashier() {
   const paymentInfo = info.paymentInfo
   const qrUrl = paymentInfo?.qrCodeUrl?.trim()
     ? paymentInfo.qrCodeUrl
-    : `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=WEIPAY_SANDBOX_ORDER_${info.orderNo}`
+    : `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=SANDBOX_PAY_ORDER_${info.orderNo}`
   const remark = paymentInfo?.remark || `WP${info.orderNo}`
 
   return (
@@ -170,11 +170,11 @@ export default function Cashier() {
             <div className="w-6 h-6 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
               <Zap className="w-3.5 h-3.5 fill-current" />
             </div>
-            <span>WeiPay 收银台</span>
+            <span>Sandbox Pay 收银台</span>
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted font-mono">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>沙盒测试模式</span>
+            <span>沙箱测试模式</span>
           </div>
         </div>
       </header>
@@ -191,7 +191,7 @@ export default function Cashier() {
                 </div>
                 <div>
                   <h4 className="text-xs font-semibold text-foreground">官方存管与清算</h4>
-                  <p className="text-[11px] text-muted leading-relaxed mt-1">资金直接存管于官方账户，通过智能清算系统完成实时鉴权与核销。</p>
+                  <p className="text-[11px] text-muted leading-relaxed mt-1">沙箱环境用于联调支付流程，不进行真实资金存管或清算。</p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -213,7 +213,7 @@ export default function Cashier() {
               {[
                 { key: 'alipay' as const, icon: <FaAlipay className="w-4 h-4 text-[#1677ff]" />, label: '支付宝' },
                 { key: 'paypal' as const, icon: <FaPaypal className="w-4 h-4 text-[#0079C1]" />, label: 'PayPal 国际' },
-                { key: 'bank' as const, icon: <div className="w-4 h-4 rounded bg-emerald-500 text-white flex items-center justify-center"><Zap className="w-2.5 h-2.5 fill-current" /></div>, label: 'WeiPay 官方存管' },
+                { key: 'bank' as const, icon: <div className="w-4 h-4 rounded bg-emerald-500 text-white flex items-center justify-center"><Zap className="w-2.5 h-2.5 fill-current" /></div>, label: 'Sandbox Pay 官方存管' },
               ].map(tab => (
                 <Button
                   key={tab.key}
@@ -240,7 +240,7 @@ export default function Cashier() {
                       className="w-full sm:w-auto px-8 py-3.5 bg-[#1677ff] hover:bg-[#0e5ec8] text-white font-semibold text-sm rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <ExternalLink className="w-4 h-4" />
-                      <span>{switching ? '正在接通官方网关...' : '直接前往支付宝官方收银台付款'}</span>
+                      <span>{switching ? '正在接通网关...' : '前往支付宝沙箱收银台付款'}</span>
                     </Button>
                     <div className="flex items-center gap-4 w-full my-2">
                       <div className="h-[1px] bg-border flex-1" />
@@ -275,7 +275,7 @@ export default function Cashier() {
                       className="w-full py-3.5 px-6 bg-[#0079C1] hover:bg-[#005e96] text-white font-medium text-sm rounded-xl shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <ExternalLink className="w-4 h-4" />
-                      <span>{switching ? '正在接通 PayPal...' : '前往 PayPal 安全结账'}</span>
+                      <span>{switching ? '正在接通 PayPal...' : '前往 PayPal 沙箱结账'}</span>
                     </Button>
                   </div>
                 )}
@@ -297,14 +297,14 @@ export default function Cashier() {
                       <div className="flex flex-col items-center text-center py-4 space-y-6 max-w-sm mx-auto">
                         <div className="space-y-1">
                           <h3 className="text-base font-bold text-foreground flex items-center justify-center gap-1.5">
-                            <Zap className="w-4 h-4 text-emerald-500" /> WeiPay 沙盒客户端扫码直通
+                            <Zap className="w-4 h-4 text-emerald-500" /> Sandbox Pay 沙箱客户端扫码直通
                           </h3>
-                          <p className="text-xs text-muted leading-relaxed">使用 WeiPay 沙盒钱包 App 扫一扫完成付款。</p>
+                          <p className="text-xs text-muted leading-relaxed">使用 Sandbox Pay 沙箱钱包 App 扫一扫完成付款。</p>
                         </div>
                         <div className="relative p-6 bg-white rounded-3xl border border-emerald-500/20 shadow-2xl shadow-emerald-500/10 flex items-center justify-center group">
                           <img
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(window.location.origin + '/mobile-pay?orderNo=' + info.orderNo)}`}
-                            alt="WeiPay QR Code"
+                            alt="Sandbox Pay QR Code"
                             className="w-52 h-52 object-contain relative z-10"
                           />
                         </div>
@@ -329,11 +329,11 @@ export default function Cashier() {
                             <ShieldCheck className="w-7 h-7" />
                           </div>
                           <h3 className="font-bold text-lg text-foreground tracking-tight">存管钱包直连验证</h3>
-                          <p className="text-xs text-muted mt-1">系统已加载沙盒结算体验凭据，可一键扣款</p>
+                          <p className="text-xs text-muted mt-1">系统已加载沙箱结算体验凭据，可一键扣款</p>
                         </div>
                         <div className="space-y-4 text-left relative z-10 font-sans">
                           <div>
-                            <label className="block text-[11px] font-semibold text-muted mb-1.5 font-mono uppercase tracking-wider">WeiPay 存管账号</label>
+                            <label className="block text-[11px] font-semibold text-muted mb-1.5 font-mono uppercase tracking-wider">Sandbox Pay 存管账号</label>
                             <TextField aria-label="存管账号" fullWidth>
                               <InputGroup className="w-full bg-background border border-border rounded-2xl focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 shadow-sm">
                                 <InputGroup.Prefix><Smartphone className="w-4 h-4 text-muted ml-3.5" /></InputGroup.Prefix>
@@ -362,7 +362,7 @@ export default function Cashier() {
                           </Button>
                           <div className="text-[10px] text-center text-muted flex items-center justify-center gap-1.5 pt-3 font-mono">
                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>国家存管清算中心 · 零风险即时直达</span>
+                            <span>沙箱环境 · 支付结果为模拟数据</span>
                           </div>
                         </div>
                       </div>
@@ -383,7 +383,7 @@ export default function Cashier() {
         />
 
         <footer className="mt-12 text-center text-[11px] text-muted font-mono">
-          WeiPay Secure Gateway &copy; {new Date().getFullYear()} — Financial Grade Clearness
+          Sandbox Pay Secure Gateway &copy; {new Date().getFullYear()} — Financial Grade Clearness
         </footer>
       </main>
     </div>

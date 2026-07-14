@@ -87,7 +87,7 @@ export default function MobilePay() {
     try {
       await api.post('/native-pay/sandbox-confirm', {
         orderNo: info.orderNo,
-        walletUser: 'mobile_scan@weipay.cn',
+        walletUser: 'mobile_scan@sandbox-pay.local',
         walletPass: '123456',
       })
       setPaidSuccess(true)
@@ -104,7 +104,7 @@ export default function MobilePay() {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center font-sans">
         <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mb-4" />
-        <p className="text-xs text-neutral-400 font-mono tracking-widest uppercase">WeiPay H5 Checkout Initializing...</p>
+        <p className="text-xs text-neutral-400 font-mono tracking-widest uppercase">Sandbox Pay H5 Checkout Initializing...</p>
       </div>
     )
   }
@@ -134,7 +134,7 @@ export default function MobilePay() {
           <div className="w-7 h-7 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
             <Zap className="w-4 h-4 fill-current" />
           </div>
-          <span className="font-bold text-sm tracking-tight text-white font-mono">WeiPay Mobile Escrow</span>
+          <span className="font-bold text-sm tracking-tight text-white font-mono">Sandbox Pay Mobile Escrow</span>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
           <ShieldCheck className="w-3.5 h-3.5" />
@@ -151,7 +151,7 @@ export default function MobilePay() {
                 <Check className="w-10 h-10 stroke-[3]" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-2xl font-black text-white tracking-tight">资金清算已核对成功</h2>
+                <h2 className="text-2xl font-black text-white tracking-tight">支付状态已更新（沙箱模拟）</h2>
                 <p className="text-xs text-neutral-400 leading-relaxed">
                   电脑端 PC 收银台正在自动抓取状态通知...<br />
                   <span className="text-emerald-400 font-bold mt-1 inline-block">您现在可以查看电脑屏幕的实时跳转！</span>
@@ -159,7 +159,7 @@ export default function MobilePay() {
               </div>
               <div className="pt-4 border-t border-neutral-800/80 font-mono text-neutral-500 text-[10px] flex items-center justify-center gap-1">
                 <Lock className="w-3 h-3 text-emerald-500" />
-                <span>AES-256 存管级加密通道 · 零资金风险</span>
+                <span>沙箱测试环境 · 不涉及真实资金</span>
               </div>
             </Card.Content>
           </Card>
@@ -170,7 +170,7 @@ export default function MobilePay() {
 
               {/* 收款方抬头 */}
               <div className="text-center space-y-2 pb-6 border-b border-neutral-800 relative z-10">
-                <div className="text-xs text-neutral-400 font-medium">向商户存管专户支付</div>
+                <div className="text-xs text-neutral-400 font-medium">向测试商户支付（沙箱）</div>
                 <div className="text-3xl font-black text-white font-mono tracking-tight text-emerald-400">
                   ¥ {info.amount.toFixed(2)}
                 </div>
@@ -188,7 +188,7 @@ export default function MobilePay() {
               <div className="space-y-3.5 text-xs text-neutral-300 font-mono relative z-10">
                 <div className="flex items-center justify-between py-1 border-b border-neutral-800/60">
                   <span className="text-neutral-500 font-sans font-medium">收款机构</span>
-                  <span className="text-white font-bold">WeiPay 官方存管清算中心</span>
+                  <span className="text-white font-bold">Sandbox Pay 测试商户（沙箱）</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-neutral-800/60">
                   <span className="text-neutral-500 font-sans font-medium">清算单号</span>
@@ -198,7 +198,7 @@ export default function MobilePay() {
                   <span className="text-neutral-500 font-sans font-medium">模拟账户</span>
                   <span className="text-emerald-400 font-bold flex items-center gap-1">
                     <Smartphone className="w-3.5 h-3.5" />
-                    <span>钱包沙盒测试专户</span>
+                    <span>钱包沙箱测试专户</span>
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-neutral-800/60">
@@ -225,7 +225,7 @@ export default function MobilePay() {
                 </Button>
                 <div className="text-[10px] text-center text-neutral-500 flex items-center justify-center gap-1.5 font-mono">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>中国人民银行资金安全护航 · 即时结算</span>
+                  <span>沙箱环境 · 支付结果为模拟数据</span>
                 </div>
               </div>
             </Card.Content>
@@ -235,7 +235,7 @@ export default function MobilePay() {
 
       {/* 底部 */}
       <footer className="py-6 text-center text-[10px] text-neutral-600 font-mono border-t border-neutral-900 bg-neutral-950">
-        WeiPay Mobile H5 Checkout &copy; {new Date().getFullYear()}<br />Financial Grade Clearness
+        Sandbox Pay Mobile H5 Checkout &copy; {new Date().getFullYear()}<br />Financial Grade Clearness
       </footer>
     </div>
   )

@@ -51,7 +51,7 @@ export class NativePayService {
         productName: order.productName,
         status: 'paid',
         payMethod: order.payMethod || 'alipay',
-        thirdPartyTradeNo: order.thirdPartyTradeNo || `WP_CLEARED_${order.orderNo}`,
+        thirdPartyTradeNo: order.thirdPartyTradeNo || `SP_CLEARED_${order.orderNo}`,
         payAt: order.payAt || new Date(),
       };
     }
@@ -108,7 +108,7 @@ export class NativePayService {
       expireAt: order.expireAt,
       paymentInfo: {
         qrCodeUrl,
-        accountName: this.siteSettingsService.get('native_pay.account_name') || 'WeiPay Official',
+        accountName: this.siteSettingsService.get('native_pay.account_name') || 'Sandbox Pay Official',
         accountNo: this.siteSettingsService.get('native_pay.account_no') || '',
         bankName: this.siteSettingsService.get('native_pay.bank_name') || '',
         remark: `WP${orderNo}`,
@@ -135,7 +135,7 @@ export class NativePayService {
     // 严防跨渠道结算渗透：禁止通过存管直联核销支付宝或 PayPal 渠道的订单
     if (order.payMethod === 'alipay' || order.payMethod === 'paypal') {
       throw new BadRequestException(
-        `该订单属于外部通道 (${order.payMethod})，无法直接通过 WeiPay 自有存管清算体系进行核销`,
+        `该订单属于外部通道 (${order.payMethod})，无法直接通过 Sandbox Pay 自有存管清算体系进行核销`,
       );
     }
 
@@ -147,7 +147,7 @@ export class NativePayService {
       throw new BadRequestException('支付安全密码凭据不正确');
     }
 
-    const confirmedTradeNo = tradeNo || `WP_WALLET_${Date.now()}`;
+    const confirmedTradeNo = tradeNo || `SP_WALLET_${Date.now()}`;
     // 金额按订单原值入账（cents），杜绝调用方伪造金额
     await this.paymentService.markPaid(
       orderNo,

@@ -26,10 +26,10 @@ export class MerchantSignatureGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const appKey = request.headers['x-weipay-appkey'];
-    const timestamp = request.headers['x-weipay-timestamp'];
-    const nonce = request.headers['x-weipay-nonce'];
-    const signature = request.headers['x-weipay-signature'];
+    const appKey = request.headers['x-sandbox-pay-appkey'];
+    const timestamp = request.headers['x-sandbox-pay-timestamp'];
+    const nonce = request.headers['x-sandbox-pay-nonce'];
+    const signature = request.headers['x-sandbox-pay-signature'];
 
     if (!appKey || !timestamp || !nonce || !signature) {
       throw new UnauthorizedException('缺少安全请求头');

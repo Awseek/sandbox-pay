@@ -94,7 +94,11 @@ describe('RefundService', () => {
       expect(result.refundTradeNo).toBe('ALI_REFUND_123');
       expect(result.currency).toBe('CNY');
       expect(deps.paymentService.markRefunding).toHaveBeenCalledWith('PAY123');
-      expect(deps.alipayService.refund).toHaveBeenCalledWith('PAY123', 5000, undefined);
+      expect(deps.alipayService.refund).toHaveBeenCalledWith(
+        'PAY20250101001',
+        5000,
+        undefined,
+      );
       expect(deps.paymentService.markRefunded).toHaveBeenCalled();
       expect(deps.auditService.log).toHaveBeenCalled();
     });
@@ -107,7 +111,7 @@ describe('RefundService', () => {
       const result = await service.execute({ orderNo: 'PAY123', amount: 50 }, { actor: 'admin' });
 
       expect(result.currency).toBe('CNY');
-      expect(result.refundTradeNo).toContain('WP_REFUND_');
+      expect(result.refundTradeNo).toContain('SP_REFUND_');
     });
 
     it('rolls back to Paid when upstream refund fails', async () => {

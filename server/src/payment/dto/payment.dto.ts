@@ -2,7 +2,7 @@ import { IsString, IsNumber, IsOptional, Min, IsUrl, MaxLength, IsIn } from 'cla
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RefundDto {
-  @ApiProperty({ description: 'Original WeiPay orderNo' })
+  @ApiProperty({ description: 'Original Sandbox Pay orderNo' })
   @IsString()
   orderNo: string;
 
@@ -56,7 +56,7 @@ export class TestPayDto {
   @Min(0.01)
   amount: number;
 
-  @ApiProperty({ example: 'WeiPay 测试订单', required: false })
+  @ApiProperty({ example: 'Sandbox Pay 测试订单', required: false })
   @IsOptional()
   @IsString()
   @MaxLength(200)

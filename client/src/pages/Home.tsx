@@ -13,7 +13,7 @@ export default function Home() {
             <div className="p-2 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
               <Zap className="w-4 h-4 fill-current" />
             </div>
-            <span>WeiPay Gateway</span>
+            <span>Sandbox Pay Gateway</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -36,7 +36,7 @@ export default function Home() {
           全能聚合的 <span className="text-emerald-500">沙箱支付中转网关</span>
         </h1>
         <p className="text-muted text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
-          专为开发联调与测试沙箱环境设计的支付路由网关。极简接入一次，智能路由到支付宝、PayPal 及 WeiPay 官方存管等多种渠道，确保全链路沙盘闭环体验。
+          专为开发联调与测试设计的支付接入沙箱网关。一次接入，即可将下单请求路由到支付宝、PayPal 及内置兜底通道的沙箱环境，用于打通和验证完整支付流程。
         </p>
 
         <div className="flex items-center justify-center gap-4 flex-wrap">
@@ -64,7 +64,7 @@ export default function Home() {
           {[
             { icon: Code, title: '极简统一 API', desc: '一套标准化 JSON 接口秒接所有主流支付渠道，完全告别各平台繁杂的 SDK 与兼容性痛点。' },
             { icon: ShieldCheck, title: '金融级安全鉴权', desc: '采用严格的 HMAC-SHA256 请求签名机制，防篡改、防重放攻击，保障每一笔流水安全可靠。' },
-            { icon: Zap, title: '智能高可用回调', desc: '支付成功后毫秒级异步触发 Webhook 通知，内置指数退避重试队列，确保商户端 100% 送达。' },
+            { icon: Zap, title: '异步回调通知', desc: '支付状态变更后异步触发 Webhook 通知，内置指数退避重试队列，提升回调送达率。' },
           ].map(f => (
             <Card key={f.title} className="p-8 group">
               <Card.Content className="p-0">
@@ -113,19 +113,19 @@ export default function Home() {
           <Card.Content className="p-0 font-mono text-xs text-muted overflow-x-auto space-y-2.5">
             <p className="text-muted/60">// HTTP Header 鉴权规范演示</p>
             <div className="flex justify-between py-1.5 border-b border-border/60">
-              <span>X-WeiPay-AppKey:</span>
+              <span>X-Sandbox-Pay-AppKey:</span>
               <span className="text-foreground font-semibold">your_assigned_app_key</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-border/60">
-              <span>X-WeiPay-Timestamp:</span>
+              <span>X-Sandbox-Pay-Timestamp:</span>
               <span className="text-foreground font-semibold">1716000000000</span>
             </div>
             <div className="flex justify-between py-1.5 border-b border-border/60">
-              <span>X-WeiPay-Nonce:</span>
+              <span>X-Sandbox-Pay-Nonce:</span>
               <span className="text-foreground font-semibold">random_uuid_string</span>
             </div>
             <div className="flex justify-between py-1.5">
-              <span>X-WeiPay-Signature:</span>
+              <span>X-Sandbox-Pay-Signature:</span>
               <span className="text-foreground font-semibold">HMAC-SHA256(body + timestamp + nonce, appSecret)</span>
             </div>
           </Card.Content>
@@ -134,7 +134,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-border mt-16 py-8 px-6 text-center text-xs text-muted">
-        WeiPay Sandbox Gateway &copy; {new Date().getFullYear()} — Crafted with premium minimalism.
+        Sandbox Pay Gateway &copy; {new Date().getFullYear()} — Crafted with premium minimalism.
       </footer>
     </div>
   )

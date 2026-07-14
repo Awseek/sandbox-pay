@@ -1,6 +1,6 @@
-# WeiPay Client
+# Sandbox Pay Client
 
-WeiPay 聚合支付平台的前端，基于 **React 19 + Vite 8 + TailwindCSS 4 + HeroUI** 构建。
+Sandbox Pay 支付接入沙箱的前端，基于 **React 19 + Vite 8 + TailwindCSS 4 + HeroUI** 构建。用于开发联调阶段测试多渠道下单、收银台、商户管理与对账流程，支付结果均为沙箱模拟，不涉及真实资金。
 
 ## 技术栈
 
@@ -18,7 +18,7 @@ WeiPay 聚合支付平台的前端，基于 **React 19 + Vite 8 + TailwindCSS 4 
 src/
 ├── pages/
 │   ├── Home.tsx             首页 / API 介绍
-│   ├── Login.tsx            登录路由（已登录跳转 / 未登录跳 SSO）
+│   ├── Login.tsx            登录路由（登录入口暂未接入，仅静态提示页）
 │   ├── Cashier.tsx          收银台（WebSocket + 轮询、多渠道支付）
 │   └── MobilePay.tsx        移动端 H5 支付页（轮询 + 倒计时 + WebSocket）
 ├── pages/admin/
@@ -41,7 +41,7 @@ src/
 │   ├── RequireAuth.tsx           路由守卫
 │   └── ThemeToggle.tsx           主题切换按钮
 ├── context/
-│   ├── AuthContext.tsx       认证状态（SSO 自动登录）
+│   ├── AuthContext.tsx       认证状态（会话校验 / 登出）
 │   └── ThemeContext.tsx      主题切换（深浅色）
 ├── utils/
 │   ├── api.ts                HTTP 请求封装（/v1/api）
@@ -56,7 +56,7 @@ src/
 | 路径 | 页面 | 说明 |
 |---|---|---|
 | `/` | Home | 平台首页 |
-| `/login` | Login | 登录路由（已登录直接跳 redirect，未登录跳 SSO） |
+| `/login` | Login | 登录路由（登录入口暂未接入，显示占位提示页） |
 | `/admin` | DashboardOverview | 控制台总览（需登录） |
 | `/admin/orders` | OrdersPage | 订单管理（需登录） |
 | `/admin/merchants` | MerchantsPage | 商户管理（需登录） |
@@ -89,7 +89,6 @@ cp .env.example .env.local
 | 变量 | 说明 |
 |---|---|
 | `VITE_API_BASE` | 后端 API 基础路径，默认走 Vite 代理 |
-| `VITE_SSO_LOGIN_URL` | SSO 登录页地址，默认 `https://we29.cn/login` |
 
 ## 与后端联调
 

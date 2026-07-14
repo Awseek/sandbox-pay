@@ -24,7 +24,7 @@ export class EncryptionService implements OnModuleInit {
     if (!raw) {
       // Fallback: derive from JWT_SECRET so dev mode still works without extra config.
       // PRODUCTION MUST set ENCRYPTION_KEY explicitly (32 random bytes, base64 or hex).
-      const jwt = this.configService.get<string>('JWT_SECRET') || 'weipay-dev-fallback';
+      const jwt = this.configService.get<string>('JWT_SECRET') || 'sandbox-pay-dev-fallback';
       this.key = crypto.createHash('sha256').update(jwt).digest();
       this.logger.warn(
         'ENCRYPTION_KEY not set — derived key from JWT_SECRET. Configure ENCRYPTION_KEY in production.',

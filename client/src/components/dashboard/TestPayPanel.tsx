@@ -11,7 +11,7 @@ import { showToast as toast } from '../../utils/toast'
  */
 export default function TestPayPanel() {
   const [amount, setAmount] = useState('88.88')
-  const [productName, setProductName] = useState('WeiPay 测试订单')
+  const [productName, setProductName] = useState('Sandbox Pay 测试订单')
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {

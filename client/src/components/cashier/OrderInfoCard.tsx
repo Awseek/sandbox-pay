@@ -17,7 +17,7 @@ export default function OrderInfoCard({ info, countdown, copied, onCopy }: Props
         <div className="pb-6 border-b border-border/80">
           <div className="text-xs text-muted mb-2 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>收款方：WeiPay 官方结算收单直联</span>
+            <span>收款方：Sandbox Pay（沙箱测试）</span>
           </div>
           <h1 className="text-base font-bold text-foreground mt-0.5">{info.productName}</h1>
         </div>

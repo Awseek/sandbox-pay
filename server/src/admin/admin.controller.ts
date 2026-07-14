@@ -129,7 +129,7 @@ export class AdminController {
 
     const orderResult = await this.paymentService.createOrder(merchant.id, {
       amount: dto.amount,
-      productName: dto.productName?.trim() || 'WeiPay 测试订单',
+      productName: dto.productName?.trim() || 'Sandbox Pay 测试订单',
       payMethod: 'native',
     });
 

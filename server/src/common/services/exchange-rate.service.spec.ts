@@ -17,6 +17,10 @@ function createService(overrides: Record<string, any> = {}) {
 }
 
 describe('ExchangeRateService', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('getRate', () => {
     it('fetches rate from open-er-api provider', async () => {
       const { service, deps } = createService();

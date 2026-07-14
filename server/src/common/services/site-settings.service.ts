@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: Record<string, string> = {
 
   // 官方存管
   NATIVE_PAY_QR_URL: '',
-  NATIVE_PAY_ACCOUNT_NAME: 'WeiPay Official',
+  NATIVE_PAY_ACCOUNT_NAME: 'Sandbox Pay Official',
   NATIVE_PAY_ACCOUNT_NO: '',
   NATIVE_PAY_BANK_NAME: '',
 

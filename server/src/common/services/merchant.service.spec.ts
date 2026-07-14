@@ -5,7 +5,7 @@ function createMockMerchant(overrides: Partial<any> = {}): any {
   return {
     id: 1,
     name: 'Test Merchant',
-    appKey: 'wp_test_abc123',
+    appKey: 'sp_test_abc123',
     appSecret: 'encrypted_secret',
     isActive: true,
     createdAt: new Date(),
@@ -70,7 +70,7 @@ describe('MerchantService', () => {
 
       const result = await service.getMerchant();
 
-      expect(result.appKey).toBe('wp_test_abc123');
+      expect(result.appKey).toBe('sp_test_abc123');
       expect(result.appSecret).toBe('••••••••••••••••••••••••••••');
     });
   });

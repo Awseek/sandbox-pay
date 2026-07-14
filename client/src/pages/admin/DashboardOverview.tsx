@@ -80,7 +80,7 @@ export default function DashboardOverview() {
   return (
     <AdminLayout
       title="控制台总览"
-      subtitle="WeiPay 聚合支付平台运营数据一览"
+      subtitle="Sandbox Pay 沙箱运营数据一览"
       refreshing={refreshing}
       onRefresh={handleRefresh}
     >

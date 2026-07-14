@@ -43,7 +43,7 @@ export class NativePayController {
     const merchant = await this.merchantService.findActiveMerchant();
     const orderResult = await this.paymentService.createOrder(merchant.id, {
       amount: 0.01,
-      productName: 'WeiPay 公开测试订单',
+      productName: 'Sandbox Pay 公开测试订单',
       payMethod: 'native',
     });
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -68,7 +68,7 @@ export class NativePayController {
   async sandboxConfirm(@Body() dto: SandboxConfirmDto) {
     return this.nativePayService.confirmPayment(
       dto.orderNo,
-      'WP_WALLET_' + Date.now(),
+      'SP_WALLET_' + Date.now(),
       dto.walletUser,
       dto.walletPass,
     );

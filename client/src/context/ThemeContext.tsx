@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('weipay_theme')
+    const saved = localStorage.getItem('sandbox_pay_theme')
     if (saved === 'light' || saved === 'dark') return saved
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   })
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.classList.add('light')
       root.setAttribute('data-theme', 'light')
     }
-    localStorage.setItem('weipay_theme', theme)
+    localStorage.setItem('sandbox_pay_theme', theme)
   }, [theme])
 
   const toggleTheme = () => {

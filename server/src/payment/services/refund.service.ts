@@ -170,7 +170,7 @@ export class RefundService {
       }
       case 'native':
         // Self-custody channel: trust admin / accounting to mirror funds out-of-band.
-        return { refundTradeNo: `WP_REFUND_${Date.now()}`, currency: 'CNY' };
+        return { refundTradeNo: `SP_REFUND_${Date.now()}`, currency: 'CNY' };
       default:
         throw new BadRequestException(`不支持的退款渠道: ${order.payMethod}`);
     }

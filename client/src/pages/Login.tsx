@@ -1,43 +1,20 @@
-import { useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { Zap } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
 
 /**
  * 登录路由处理：
- * - 已登录 → 直接跳 redirect 目标（或 /admin），无中间页面
- * - 未登录 → 跳 SSO 登录页，带上 redirect 回调
+ * 目前没有接入登录方式（SSO 已移除，尚未补充新的登录），
+ * 因此这里只是一个静态提示页，告知用户登录暂不可用。
+ * 保留可路由导出，供 RequireAuth 未登录时重定向到 /login 渲染。
  */
 export default function Login() {
-  const [searchParams] = useSearchParams()
-  const { isLoggedIn, loading } = useAuth()
-  const redirect = searchParams.get('redirect') || '/admin'
-
-  useEffect(() => {
-    if (loading) return
-
-    if (isLoggedIn) {
-      // 已登录，瞬间跳目标
-      window.location.replace(redirect)
-    } else {
-      // 未登录，跳 SSO
-      const loginUrl = import.meta.env.VITE_SSO_LOGIN_URL || 'https://we29.cn/login'
-      const returnUrl = window.location.origin + '/login?redirect=' + encodeURIComponent(redirect)
-      window.location.replace(`${loginUrl}?redirect=${encodeURIComponent(returnUrl)}`)
-    }
-  }, [loading, isLoggedIn, redirect])
-
-  // loading 期间白屏，避免闪烁"请登录"
-  if (loading) return null
-
-  // 未登录且即将跳 SSO，显示极简提示
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-sm mb-4 animate-pulse">
+      <div className="max-w-sm text-center">
+        <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-sm mb-4">
           <Zap className="w-6 h-6 fill-current" />
         </div>
-        <p className="text-muted text-sm">正在跳转至登录页...</p>
+        <p className="text-foreground text-base font-medium">登录暂不可用</p>
+        <p className="text-muted text-sm mt-2">Login is currently unavailable.</p>
       </div>
     </div>
   )

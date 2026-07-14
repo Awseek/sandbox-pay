@@ -92,7 +92,7 @@ export default function AdminLayout({
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <div className="font-bold text-sm tracking-tight text-foreground whitespace-nowrap">WeiPay</div>
+              <div className="font-bold text-sm tracking-tight text-foreground whitespace-nowrap">Sandbox Pay</div>
               <div className="text-[10px] text-muted font-mono uppercase tracking-wider">Admin Console</div>
             </div>
           )}

@@ -24,10 +24,10 @@ export class GatewayController {
   @Post('pay')
   @UseGuards(MerchantSignatureGuard)
   @ApiOperation({ summary: 'Create a payment order and get payment URL' })
-  @ApiHeader({ name: 'X-WeiPay-AppKey', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Timestamp', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Nonce', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Signature', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-AppKey', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Timestamp', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Nonce', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Signature', required: true })
   async createPayment(@Request() req: AuthenticatedRequest, @Body() dto: CreatePaymentDto) {
     const merchant = req.merchant!;
     const order = await this.paymentService.createOrder(merchant.id, dto);
@@ -50,10 +50,10 @@ export class GatewayController {
   @Post('alipay/pay')
   @UseGuards(MerchantSignatureGuard)
   @ApiOperation({ summary: 'Direct: create Alipay payment order' })
-  @ApiHeader({ name: 'X-WeiPay-AppKey', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Timestamp', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Nonce', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Signature', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-AppKey', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Timestamp', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Nonce', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Signature', required: true })
   async alipayPay(@Request() req: AuthenticatedRequest, @Body() dto: Omit<CreatePaymentDto, 'payMethod'>) {
     const merchant = req.merchant!;
     const order = await this.paymentService.createOrder(merchant.id, { ...dto, payMethod: 'alipay' });
@@ -64,10 +64,10 @@ export class GatewayController {
   @Post('paypal/pay')
   @UseGuards(MerchantSignatureGuard)
   @ApiOperation({ summary: 'Direct: create PayPal payment order' })
-  @ApiHeader({ name: 'X-WeiPay-AppKey', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Timestamp', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Nonce', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Signature', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-AppKey', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Timestamp', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Nonce', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Signature', required: true })
   async paypalPay(@Request() req: AuthenticatedRequest, @Body() dto: Omit<CreatePaymentDto, 'payMethod'>) {
     const merchant = req.merchant!;
     const order = await this.paymentService.createOrder(merchant.id, { ...dto, payMethod: 'paypal' });
@@ -78,10 +78,10 @@ export class GatewayController {
   @Post('native/pay')
   @UseGuards(MerchantSignatureGuard)
   @ApiOperation({ summary: 'Direct: create Native (escrow) payment order' })
-  @ApiHeader({ name: 'X-WeiPay-AppKey', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Timestamp', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Nonce', required: true })
-  @ApiHeader({ name: 'X-WeiPay-Signature', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-AppKey', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Timestamp', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Nonce', required: true })
+  @ApiHeader({ name: 'X-Sandbox-Pay-Signature', required: true })
   async nativePay(@Request() req: AuthenticatedRequest, @Body() dto: Omit<CreatePaymentDto, 'payMethod'>) {
     const merchant = req.merchant!;
     const order = await this.paymentService.createOrder(merchant.id, { ...dto, payMethod: 'native' });

@@ -1,11 +1,11 @@
-# WeiPay
+# Sandbox Pay
 
-聚合支付平台，提供商户接入、聚合下单、多渠道支付（支付宝 / PayPal / 自有兜底）、收银台、管理后台等能力。
+支付接入沙箱，用于开发联调与测试阶段模拟支付流程，提供商户接入、聚合下单、多渠道支付（支付宝 / PayPal 沙箱 / 自有兜底）、收银台、管理后台等能力。支付结果均为沙箱模拟，不涉及真实资金托管或清算。
 
 ## 仓库结构
 
 ```
-WeiPay/
+sandbox-pay/
 ├── server/    NestJS 11 + TypeORM + MySQL  服务端
 └── client/    React 19 + Vite 8 + Tailwind 4  Web 端
 ```
@@ -63,7 +63,7 @@ docker compose up -d
 ## 支付流程架构
 
 ```
-商户系统                    WeiPay 网关                   上游渠道
+商户系统                  Sandbox Pay 网关                上游渠道
    │                           │                           │
    │  POST /gateway/pay        │                           │
    │  (HMAC-SHA256 签名)       │                           │
@@ -109,15 +109,16 @@ docker compose up -d
   - 站点设置 — 手续费/汇率/限流/沙箱/邮件等业务参数热修改（无需重启）
   - 开发沙箱 — 密钥管理、测试下单、数据重置
 - **对账**：上传支付宝/PayPal 日账单 CSV，自动匹配本地订单，识别差异
-- **SSO**：与 we29.cn 单点登录集成（共享 cookie 无感登录）
 - **实时推送**：Socket.IO 推送订单状态变更到收银台
+
+> 说明：原有 OIDC SSO 登录已移除，目前尚未接入替代登录方式，管理后台暂无可用的运行时登录入口。
 
 ## 鉴权机制
 
 | 接口类型 | 鉴权方式 | 说明 |
 |---|---|---|
-| 商户网关 (`/api/gateway/*`) | HMAC-SHA256 签名 | 请求头携带 `X-WeiPay-AppKey` + `Timestamp` + `Nonce` + `Signature` |
-| 管理后台 (`/api/admin/*`) | JWT Bearer Token | 通过 SSO 无感登录获取，有效期 7 天 |
+| 商户网关 (`/api/gateway/*`) | HMAC-SHA256 签名 | 请求头携带 `X-Sandbox-Pay-AppKey` + `Timestamp` + `Nonce` + `Signature` |
+| 管理后台 (`/api/admin/*`) | JWT Bearer Token | 本地 JWT 会话 Cookie（`sandbox_pay_access_token`）；登录入口暂未接入 |
 | 收银台 (`/api/native-pay/cashier`) | 无（公开） | 凭 orderNo 查询，设计如此 |
 | 沙箱接口 (`sandbox-confirm`, `test-pay`) | SandboxGuard | 仅 `ENABLE_SANDBOX=true` 时开放 |
 | 健康检查 (`/health`) | 无 | Docker healthcheck 用 |

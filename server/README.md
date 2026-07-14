@@ -1,12 +1,12 @@
-# WeiPay Server
+# Sandbox Pay Server
 
-WeiPay 聚合支付平台的后端服务，基于 **NestJS 11 + TypeORM + MySQL** 构建。
+Sandbox Pay 支付接入沙箱的后端服务，基于 **NestJS 11 + TypeORM + MySQL** 构建。提供多渠道下单路由（支付宝 / PayPal 沙箱、自有兜底通道）、商户管理、对账与退款等接口，用于支付联调与测试，支付结果为沙箱模拟，不涉及真实资金。
 
 ## 技术栈
 
 - **框架**: NestJS 11 (Express)
 - **数据库**: MySQL 8 + TypeORM 0.3
-- **鉴权**: Passport-JWT + SSO (we29.cn 共享 cookie)
+- **鉴权**: Passport-JWT（本地 JWT 会话 Cookie；登录入口暂未接入）
 - **支付渠道**: 支付宝 (alipay-sdk)、PayPal (Checkout Server SDK)、自有兜底通道 (Native)
 - **实时通信**: Socket.IO（订单状态推送到收银台）
 - **API 文档**: Swagger (`/v1/api/docs`)
@@ -18,7 +18,7 @@ WeiPay 聚合支付平台的后端服务，基于 **NestJS 11 + TypeORM + MySQL*
 
 ```
 src/
-├── auth/              JWT 鉴权 + SSO 自动登录
+├── auth/              JWT 鉴权（会话 / 登出；登录入口暂未接入）
 ├── admin/             管理后台 API（统计 / 订单 / 商户 / 通知 / 对账 / 审计）
 ├── payment/           支付核心
 │   ├── controllers/       alipay / paypal / native-pay 回调与操作
@@ -58,7 +58,7 @@ API 文档：<http://localhost:3000/v1/api/docs>
 
 | 路径前缀 | 模块 | 鉴权 | 说明 |
 |---|---|---|---|
-| `/v1/api/auth` | Auth | — | SSO 自动登录（共享 cookie） |
+| `/v1/api/auth` | Auth | JWT | 会话查询 / 登出（登录入口暂未接入） |
 | `/v1/api/admin` | Admin | JWT | 统计、订单、商户、通知、对账、审计、沙箱 |
 | `/v1/api/gateway` | Gateway | HMAC 签名 | 商户接入：下单、查询、退款 |
 | `/v1/api/native-pay` | NativePay | 混合 | 收银台、沙箱确认、渠道切换、公开测试 |

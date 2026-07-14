@@ -19,7 +19,7 @@ export default function MerchantKeyPanel({ merchant, copiedKey, onCopy, onResetS
           </div>
           <div>
             <h3 className="font-semibold text-base text-foreground tracking-tight">商户密钥鉴权</h3>
-            <p className="text-xs text-muted">调用 WeiPay API 必备鉴权参数</p>
+            <p className="text-xs text-muted">调用 Sandbox Pay API 必备鉴权参数</p>
           </div>
         </div>
 

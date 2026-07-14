@@ -84,7 +84,7 @@ export class PaymentOrder {
   @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: moneyColumnTransformer })
   channelCost: number; // cents
 
-  // Fee charged by WeiPay to the merchant (revenue).
+  // Fee charged by Sandbox Pay to the merchant (revenue).
   @Column({ type: 'decimal', precision: 18, scale: 2, default: 0, transformer: moneyColumnTransformer })
   fee: number; // cents
 

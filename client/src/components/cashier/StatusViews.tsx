@@ -13,7 +13,7 @@ export function PaidView({ info }: { info: CashierInfo }) {
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground">支付成功</h2>
-            <p className="text-muted text-xs mt-1">收款存管方：WeiPay 官方清算中心</p>
+            <p className="text-muted text-xs mt-1">沙箱测试环境 · Sandbox Pay</p>
           </div>
 
           <div className="py-6 space-y-4 text-sm font-medium">

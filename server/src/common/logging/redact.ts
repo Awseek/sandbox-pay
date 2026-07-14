@@ -20,7 +20,7 @@ const SENSITIVE_KEYS = new Set(
     'secret',
     'signature',
     'sign',
-    'x-weipay-signature',
+    'x-sandbox-pay-signature',
     'jwt',
     'jwt_secret',
     'encryption_key',

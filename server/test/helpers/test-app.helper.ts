@@ -64,7 +64,7 @@ export async function createTestApp() {
     {
       id: 1,
       name: 'Test Merchant',
-      appKey: 'wp_test_key',
+      appKey: 'sp_test_key',
       appSecret: 'enc:v1:test-encrypted-secret',
       isActive: true,
     },

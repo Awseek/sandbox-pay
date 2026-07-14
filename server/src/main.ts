@@ -21,7 +21,7 @@ async function bootstrap() {
   // Graceful shutdown — wait for in-flight requests to complete before exiting
   app.enableShutdownHooks();
 
-  // Cookie parser — 读取共享 cookie（we29_refresh_token）
+  // Cookie parser — 读取本应用 host-only JWT 会话 cookie
   app.use(cookieParser());
 
   // API versioning — URI-based with v1 as default.
@@ -62,13 +62,14 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('WeiPay API')
+    .setTitle('Sandbox Pay API')
     .setDescription(
-      'WeiPay is an aggregated payment gateway that unifies multiple payment ' +
+      'Sandbox Pay is an aggregated payment gateway that unifies multiple payment ' +
         'channels (WeChat Pay, Alipay, etc.) behind a single REST API.\n\n' +
         '**Authentication**\n' +
-        '- **Admin endpoints** — JWT Bearer token obtained from `/auth/login`. ' +
-        'Pass the token in the `Authorization: Bearer <token>` header.\n' +
+        '- **Admin endpoints** — authenticated via a local JWT session cookie ' +
+        '(`sandbox_pay_access_token`), or by passing the token in the ' +
+        '`Authorization: Bearer <token>` header.\n' +
         '- **Merchant gateway** — HMAC-SHA256 request signing. ' +
         'Sign the payload with your merchant secret and include the signature ' +
         'in the `X-Signature` header.\n\n' +

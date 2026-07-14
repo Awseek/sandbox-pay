@@ -8,7 +8,7 @@ describe('Gateway (e2e)', () => {
   let app: INestApplication<App>;
   let signatureService: SignatureService;
 
-  const APP_KEY = 'wp_test_key';
+  const APP_KEY = 'sp_test_key';
   const APP_SECRET = 'test-secret'; // matches mock merchant
 
   beforeAll(async () => {
@@ -30,10 +30,10 @@ describe('Gateway (e2e)', () => {
     const signature = signatureService.sign(payload, APP_SECRET);
 
     return {
-      'X-WeiPay-AppKey': APP_KEY,
-      'X-WeiPay-Timestamp': timestamp,
-      'X-WeiPay-Nonce': nonce,
-      'X-WeiPay-Signature': signature,
+      'X-Sandbox-Pay-AppKey': APP_KEY,
+      'X-Sandbox-Pay-Timestamp': timestamp,
+      'X-Sandbox-Pay-Nonce': nonce,
+      'X-Sandbox-Pay-Signature': signature,
       'Content-Type': 'application/json',
     };
   }
@@ -51,7 +51,7 @@ describe('Gateway (e2e)', () => {
         .post('/api/gateway/pay')
         .set({
           ...signRequest({ amount: 100 }),
-          'X-WeiPay-Signature': 'invalid-signature-value',
+          'X-Sandbox-Pay-Signature': 'invalid-signature-value',
         })
         .send({ amount: 100, productName: 'Test', payMethod: 'native' })
         .expect(401);
@@ -67,10 +67,10 @@ describe('Gateway (e2e)', () => {
       return request(app.getHttpServer())
         .post('/api/gateway/pay')
         .set({
-          'X-WeiPay-AppKey': APP_KEY,
-          'X-WeiPay-Timestamp': timestamp,
-          'X-WeiPay-Nonce': nonce,
-          'X-WeiPay-Signature': signature,
+          'X-Sandbox-Pay-AppKey': APP_KEY,
+          'X-Sandbox-Pay-Timestamp': timestamp,
+          'X-Sandbox-Pay-Nonce': nonce,
+          'X-Sandbox-Pay-Signature': signature,
           'Content-Type': 'application/json',
         })
         .send(body)
@@ -115,10 +115,10 @@ describe('Gateway (e2e)', () => {
       return request(app.getHttpServer())
         .get('/api/gateway/query')
         .set({
-          'X-WeiPay-AppKey': APP_KEY,
-          'X-WeiPay-Timestamp': timestamp,
-          'X-WeiPay-Nonce': nonce,
-          'X-WeiPay-Signature': signature,
+          'X-Sandbox-Pay-AppKey': APP_KEY,
+          'X-Sandbox-Pay-Timestamp': timestamp,
+          'X-Sandbox-Pay-Nonce': nonce,
+          'X-Sandbox-Pay-Signature': signature,
         })
         .expect(404); // order not found
     });
