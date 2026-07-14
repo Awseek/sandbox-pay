@@ -36,8 +36,8 @@ export function toYuanString(cents: number | null | undefined): string {
  * Apply to amount-like columns so all in-memory code can stay in cents.
  */
 export const moneyColumnTransformer = {
-  to: (cents: number | null | undefined): string | null => {
-    if (cents == null) return null;
+  to: (cents: number | null | undefined): string => {
+    if (cents == null) return '0.00';
     return (Math.round(Number(cents)) / 100).toFixed(2);
   },
   from: (value: string | number | null | undefined): number | null => {
