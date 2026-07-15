@@ -19,7 +19,7 @@ export default function DeleteConfirmDialog({
     <Modal>
       <Modal.Backdrop isOpen={!!target} onOpenChange={(open) => !open && onClose()} variant="blur">
         <Modal.Container size="md">
-          <Modal.Dialog className="bg-background border border-rose-500/20 shadow-2xl rounded-2xl p-6 overflow-hidden">
+          <Modal.Dialog className="overflow-hidden rounded-xl border border-rose-500/20 bg-surface p-6 shadow-[0_18px_50px_rgba(0,0,0,0.12)]">
             <Modal.CloseTrigger />
             <Modal.Header className="flex items-center gap-3 text-left pb-4">
               <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 border border-rose-500/20">

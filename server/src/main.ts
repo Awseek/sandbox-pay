@@ -60,41 +60,26 @@ async function bootstrap() {
   // Security headers (X-Content-Type-Options, X-Frame-Options, HSTS, CSP, etc.)
   app.use(helmet());
 
-  // Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Sandbox Pay API')
-    .setDescription(
-      'Sandbox Pay is an aggregated payment gateway that unifies multiple payment ' +
-        'channels (WeChat Pay, Alipay, etc.) behind a single REST API.\n\n' +
-        '**Authentication**\n' +
-        '- **Admin endpoints** — authenticated via a local JWT session cookie ' +
-        '(`sandbox_pay_access_token`), or by passing the token in the ' +
-        '`Authorization: Bearer <token>` header.\n' +
-        '- **Merchant gateway** — HMAC-SHA256 request signing. ' +
-        'Sign the payload with your merchant secret and include the signature ' +
-        'in the `X-Signature` header.\n\n' +
-        '**Common Error Codes**\n' +
-        '| Code | Meaning |\n' +
-        '| --- | --- |\n' +
-        '| 400 | Bad Request — validation failed or malformed payload |\n' +
-        '| 401 | Unauthorized — missing or invalid credentials |\n' +
-        '| 403 | Forbidden — insufficient permissions for the resource |\n' +
-        '| 404 | Not Found — the requested resource does not exist |\n' +
-        '| 409 | Conflict — duplicate order or state conflict |\n' +
-        '| 429 | Too Many Requests — rate limit exceeded |\n\n' +
-        '**Rate Limiting**\n' +
-        'Endpoints are throttled per IP address. The default limits are ' +
-        '60 requests/minute for unauthenticated requests and 120 requests/minute ' +
-        'for authenticated requests. When the limit is exceeded, the API returns ' +
-        '`429 Too Many Requests` with a `Retry-After` header indicating how many ' +
-        'seconds to wait before retrying.',
-    )
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('v1/api/docs', app, document);
+  // Swagger is opt-in. Keep interface details off public deployments by default;
+  // the authenticated client console contains the merchant integration guide.
+  if (process.env.ENABLE_API_DOCS === 'true') {
+    const config = new DocumentBuilder()
+      .setTitle('Sandbox Pay API')
+      .setDescription(
+        'Sandbox Pay is an aggregated payment gateway for development and testing.\n\n' +
+          '**Authentication**\n' +
+          '- **Admin endpoints** — local JWT session cookie or Bearer token.\n' +
+          '- **Merchant gateway** — HMAC-SHA256 request signing using the assigned merchant secret.\n\n' +
+          '**Security**\n' +
+          'Do not enable this Swagger UI on a publicly reachable production deployment.',
+      )
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('v1/api/docs', app, document);
+  }
 
   await app.listen(process.env.PORT || 3000);
 }
-bootstrap();
+void bootstrap();

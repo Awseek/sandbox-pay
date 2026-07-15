@@ -13,14 +13,13 @@ export default function ThemeToggle() {
           variant="ghost"
           onPress={toggleTheme}
           aria-label={`切换至${theme === 'dark' ? '日间' : '夜间'}模式`}
-          className="relative rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 text-foreground hover:scale-105 active:scale-95 shadow-sm group overflow-hidden h-10 w-10 min-w-10"
+          className="h-9 w-9 min-w-9 rounded-lg border border-border bg-surface text-muted shadow-none hover:bg-surface-secondary hover:text-foreground"
         >
-          <span className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 pointer-events-none" />
-          <div className="relative flex items-center justify-center w-5 h-5">
+          <div className="flex h-4 w-4 items-center justify-center">
             {theme === 'dark' ? (
-              <Sun className="w-5 h-5 text-amber-400 animate-spin-slow" />
+              <Sun className="h-4 w-4 text-amber-400" />
             ) : (
-              <Moon className="w-5 h-5 text-indigo-600" />
+              <Moon className="h-4 w-4" />
             )}
           </div>
         </Button>

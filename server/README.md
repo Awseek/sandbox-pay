@@ -6,10 +6,11 @@ Sandbox Pay 支付接入沙箱的后端服务，基于 **NestJS 11 + TypeORM + M
 
 - **框架**: NestJS 11 (Express)
 - **数据库**: MySQL 8 + TypeORM 0.3
-- **鉴权**: Passport-JWT（本地 JWT 会话 Cookie；登录入口暂未接入）
+- **鉴权**: Passport-JWT（管理员账号密码登录，签发本地 JWT 会话 Cookie）
 - **支付渠道**: 支付宝 (alipay-sdk)、PayPal (Checkout Server SDK)、自有兜底通道 (Native)
 - **实时通信**: Socket.IO（订单状态推送到收银台）
-- **API 文档**: Swagger (`/v1/api/docs`)
+- **接入文档**: 登录管理后台后访问 `/admin/docs`
+- **Swagger**: 默认关闭，仅在受控开发环境设置 `ENABLE_API_DOCS=true` 后开放 `/v1/api/docs`
 - **定时任务**: `@nestjs/schedule` + cron（异步通知重试、订单过期清理）
 - **日志**: Winston
 - **校验**: class-validator + 全局 ValidationPipe
@@ -18,7 +19,7 @@ Sandbox Pay 支付接入沙箱的后端服务，基于 **NestJS 11 + TypeORM + M
 
 ```
 src/
-├── auth/              JWT 鉴权（会话 / 登出；登录入口暂未接入）
+├── auth/              JWT 鉴权（账号密码登录 / 会话 / 登出）
 ├── admin/             管理后台 API（统计 / 订单 / 商户 / 通知 / 对账 / 审计）
 ├── payment/           支付核心
 │   ├── controllers/       alipay / paypal / native-pay 回调与操作
@@ -50,7 +51,9 @@ cp .env.example .env   # 填写数据库 / JWT / 第三方凭证
 pnpm dev               # http://localhost:3000
 ```
 
-API 文档：<http://localhost:3000/v1/api/docs>
+接入文档：登录管理后台后访问 `/admin/docs`。
+
+Swagger 默认关闭；仅在受控开发环境设置 `ENABLE_API_DOCS=true` 后访问 <http://localhost:3000/v1/api/docs>。
 
 ## API 模块
 
@@ -58,7 +61,7 @@ API 文档：<http://localhost:3000/v1/api/docs>
 
 | 路径前缀 | 模块 | 鉴权 | 说明 |
 |---|---|---|---|
-| `/v1/api/auth` | Auth | JWT | 会话查询 / 登出（登录入口暂未接入） |
+| `/v1/api/auth` | Auth | 混合 | 账号密码登录 / 会话查询 / 登出 |
 | `/v1/api/admin` | Admin | JWT | 统计、订单、商户、通知、对账、审计、沙箱 |
 | `/v1/api/gateway` | Gateway | HMAC 签名 | 商户接入：下单、查询、退款 |
 | `/v1/api/native-pay` | NativePay | 混合 | 收银台、沙箱确认、渠道切换、公开测试 |

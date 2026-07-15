@@ -1,11 +1,18 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import { setToken, clearToken } from '../utils/api'
+import { clearToken, setToken } from '../utils/api'
+
+interface AuthSession {
+  token: string
+  username: string
+  role: string
+}
 
 interface AuthContextType {
   isLoggedIn: boolean
   loading: boolean
   username: string
   role: string
+  login: (session: AuthSession) => void
   logout: () => Promise<void>
 }
 
@@ -14,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   username: '',
   role: '',
+  login: () => {},
   logout: async () => {},
 })
 
@@ -28,9 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // 兼容切换前签发的本地 token
     const token = localStorage.getItem('token')
     if (token) {
-      setToken(token)
-      setIsLoggedIn(true)
-      setLoading(false)
       return
     }
 
@@ -54,6 +59,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
+  const login = (session: AuthSession) => {
+    setToken(session.token)
+    localStorage.setItem('username', session.username)
+    localStorage.setItem('role', session.role)
+    setUsername(session.username)
+    setRole(session.role)
+    setIsLoggedIn(true)
+    setLoading(false)
+  }
+
   const logout = async () => {
     await fetch('/v1/api/auth/logout', {
       method: 'POST',
@@ -69,12 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, loading, username, role, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, loading, username, role, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   return useContext(AuthContext)
 }

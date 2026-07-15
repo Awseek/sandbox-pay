@@ -98,7 +98,10 @@ export default function OrdersPage() {
     }
   }, [page, keyword, status, payMethod, dateFrom, dateTo, logout, navigate])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const initialLoad = setTimeout(load, 0)
+    return () => clearTimeout(initialLoad)
+  }, [load])
 
   const handleRefresh = () => load(true)
 

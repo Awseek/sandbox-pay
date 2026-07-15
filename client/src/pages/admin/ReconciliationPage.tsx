@@ -100,7 +100,10 @@ export default function ReconciliationPage() {
     }
   }, [page, filterProvider, filterDate, filterStatus, logout, navigate])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const initialLoad = setTimeout(load, 0)
+    return () => clearTimeout(initialLoad)
+  }, [load])
 
   const handleRefresh = () => load(true)
 

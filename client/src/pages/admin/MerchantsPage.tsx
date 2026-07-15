@@ -50,7 +50,10 @@ export default function MerchantsPage() {
     }
   }, [logout, navigate])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const initialLoad = setTimeout(load, 0)
+    return () => clearTimeout(initialLoad)
+  }, [load])
 
   const handleRefresh = () => load(true)
 
@@ -270,7 +273,7 @@ export default function MerchantsPage() {
       <Modal>
         <Modal.Backdrop isOpen={showCreate} onOpenChange={open => !open && setShowCreate(false)} variant="blur">
           <Modal.Container size="sm">
-            <Modal.Dialog className="bg-background border border-border shadow-2xl rounded-2xl p-6">
+            <Modal.Dialog className="rounded-xl border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(0,0,0,0.12)]">
               <Modal.CloseTrigger />
               <Modal.Header className="pb-4">
                 <Modal.Heading className="text-base font-semibold text-foreground flex items-center gap-2">
@@ -322,7 +325,7 @@ export default function MerchantsPage() {
       <Modal>
         <Modal.Backdrop isOpen={!!editTarget} onOpenChange={open => !open && setEditTarget(null)} variant="blur">
           <Modal.Container size="sm">
-            <Modal.Dialog className="bg-background border border-border shadow-2xl rounded-2xl p-6">
+            <Modal.Dialog className="rounded-xl border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(0,0,0,0.12)]">
               <Modal.CloseTrigger />
               <Modal.Header className="pb-4">
                 <Modal.Heading className="text-base font-semibold text-foreground flex items-center gap-2">

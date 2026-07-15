@@ -15,6 +15,7 @@ import ReconciliationPage from './pages/admin/ReconciliationPage'
 import AuditLogsPage from './pages/admin/AuditLogsPage'
 import SettingsPage from './pages/admin/SettingsPage'
 import SandboxPage from './pages/admin/SandboxPage'
+import IntegrationDocsPage from './pages/admin/IntegrationDocsPage'
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/admin/merchants" element={<RequireAuth><MerchantsPage /></RequireAuth>} />
         <Route path="/admin/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />
         <Route path="/admin/reconciliation" element={<RequireAuth><ReconciliationPage /></RequireAuth>} />
+        <Route path="/admin/docs" element={<RequireAuth><IntegrationDocsPage /></RequireAuth>} />
         <Route path="/admin/audit" element={<RequireAuth><AuditLogsPage /></RequireAuth>} />
         <Route path="/admin/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
         <Route path="/admin/sandbox" element={<RequireAuth><SandboxPage /></RequireAuth>} />

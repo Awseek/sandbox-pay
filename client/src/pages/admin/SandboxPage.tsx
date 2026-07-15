@@ -15,7 +15,7 @@ export default function SandboxPage() {
   const { logout } = useAuth()
 
   const [merchant, setMerchant] = useState<MerchantInfo>({
-    name: 'Sandbox Pay Merchant',
+    name: 'WePay Merchant',
     appKey: 'sp_sandbox_...',
     appSecret: '••••••••••••••••••••••••••••',
   })
@@ -40,7 +40,10 @@ export default function SandboxPage() {
     }
   }, [logout, navigate])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const initialLoad = setTimeout(load, 0)
+    return () => clearTimeout(initialLoad)
+  }, [load])
 
   const handleRefresh = () => load(true)
 

@@ -55,14 +55,17 @@ export default function DashboardOverview() {
     }
   }, [logout, navigate])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const initialLoad = setTimeout(load, 0)
+    return () => clearTimeout(initialLoad)
+  }, [load])
 
   const handleRefresh = () => load(true)
 
   const statCards = [
-    { title: '总交易额', val: stats.totalAmount, icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { title: '成功单数', val: stats.successCount, icon: CheckCircle2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { title: '支付成功率', val: stats.successRate, icon: TrendingUp, color: 'text-violet-500', bg: 'bg-violet-500/10' },
+    { title: '总交易额', val: stats.totalAmount, icon: DollarSign, color: 'text-muted', bg: 'bg-surface-secondary' },
+    { title: '成功单数', val: stats.successCount, icon: CheckCircle2, color: 'text-muted', bg: 'bg-surface-secondary' },
+    { title: '支付成功率', val: stats.successRate, icon: TrendingUp, color: 'text-muted', bg: 'bg-surface-secondary' },
     { title: '待处理通知', val: `${pendingNotifyCount} 条`, icon: Bell, color: 'text-amber-500', bg: 'bg-amber-500/10' },
   ]
 
@@ -80,12 +83,12 @@ export default function DashboardOverview() {
   return (
     <AdminLayout
       title="控制台总览"
-      subtitle="Sandbox Pay 沙箱运营数据一览"
+      subtitle="WePay 沙箱运营数据一览"
       refreshing={refreshing}
       onRefresh={handleRefresh}
     >
       {/* Stat cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <section className="mb-8 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {statCards.map((s, i) => (
           <Card key={i} className="p-5">
             <Card.Content className="p-0">
@@ -170,7 +173,7 @@ export default function DashboardOverview() {
                 onClick={() => navigate('/admin/orders')}
                 className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all cursor-pointer text-left"
               >
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-surface-secondary text-muted flex items-center justify-center shrink-0">
                   <ListOrdered className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
@@ -181,9 +184,9 @@ export default function DashboardOverview() {
 
               <button
                 onClick={() => navigate('/admin/merchants')}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-blue-500/30 hover:bg-blue-500/5 transition-all cursor-pointer text-left"
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all cursor-pointer text-left"
               >
-                <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-surface-secondary text-muted flex items-center justify-center shrink-0">
                   <Store className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
@@ -211,9 +214,9 @@ export default function DashboardOverview() {
 
               <button
                 onClick={() => navigate('/admin/sandbox')}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-violet-500/30 hover:bg-violet-500/5 transition-all cursor-pointer text-left"
+                className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all cursor-pointer text-left"
               >
-                <div className="w-9 h-9 rounded-lg bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-surface-secondary text-muted flex items-center justify-center shrink-0">
                   <Zap className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">

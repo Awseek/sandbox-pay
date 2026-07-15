@@ -65,7 +65,10 @@ export default function AuditLogsPage() {
     }
   }, [page, actionFilter, actorFilter, logout, navigate])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    const initialLoad = setTimeout(load, 0)
+    return () => clearTimeout(initialLoad)
+  }, [load])
 
   const handleRefresh = () => load(true)
 

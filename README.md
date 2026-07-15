@@ -33,10 +33,16 @@ sandbox-pay/
 cd server
 cp .env.example .env       # 填写数据库 / JWT / 第三方凭证
 pnpm install
+pnpm migration:run         # 初始化数据库表结构
+pnpm create:admin admin your_password   # 创建管理员账号（用于登录后台）
 pnpm dev                   # http://localhost:3000
 ```
 
-API 文档：<http://localhost:3000/v1/api/docs>
+登录后台使用管理员账号密码，账号通过 `pnpm create:admin <用户名> <密码>` 创建（重复执行会重置密码）。
+
+接入文档位于登录后的管理后台：`/admin/docs`。
+
+Swagger 默认关闭；仅在受控开发环境设置 `ENABLE_API_DOCS=true` 后访问 <http://localhost:3000/v1/api/docs>。
 
 ### 2. 前端
 
@@ -58,7 +64,8 @@ docker compose up -d
 
 - 客户端：`http://localhost`
 - 后端 API：`http://localhost/v1/api/`
-- Swagger：`http://localhost/v1/api/docs`
+- 接入文档：登录管理后台后访问 `/admin/docs`
+- Swagger：默认关闭；按需设置 `ENABLE_API_DOCS=true` 后访问 `http://localhost/v1/api/docs`
 
 ## 支付流程架构
 

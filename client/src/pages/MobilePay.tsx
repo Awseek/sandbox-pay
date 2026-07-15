@@ -1,15 +1,34 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ShieldCheck, Check, Smartphone, Zap, Lock, RefreshCw, AlertCircle, ArrowLeft, Clock } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  Clock3,
+  LockKeyhole,
+  RefreshCw,
+  ShieldCheck,
+  WalletCards,
+} from 'lucide-react'
 import { api, ApiError } from '../utils/api'
 import { useOrderStatus } from '../utils/socket'
-import { Button, Card } from '@heroui/react'
+import { showToast as toast } from '../utils/toast'
 import type { CashierInfo } from '../components/dashboard/types'
+import BrandMark from '../components/BrandMark'
+
+function closePage() {
+  if (window.opener) {
+    window.close()
+    return
+  }
+  if (window.history.length > 1) window.history.back()
+  else window.location.href = '/'
+}
 
 export default function MobilePay() {
   const [searchParams] = useSearchParams()
-  const orderNo = searchParams.get('orderNo')
-
+  const orderNo = searchParams.get('orderNo') || ''
   const [info, setInfo] = useState<CashierInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -18,16 +37,12 @@ export default function MobilePay() {
   const [countdown, setCountdown] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const fetchInfo = async () => {
-    if (!orderNo) {
-      setError('缺少付款单号')
-      setLoading(false)
-      return
-    }
-
+  const fetchInfo = useCallback(async () => {
+    if (!orderNo) return
     try {
-      const data = await api.get<CashierInfo>(`/native-pay/cashier?orderNo=${orderNo}`)
+      const data = await api.get<CashierInfo>(`/native-pay/cashier?orderNo=${encodeURIComponent(orderNo)}`)
       setInfo(data)
+      setError('')
       if (data.status === 'paid') {
         setPaidSuccess(true)
         if (pollRef.current) clearInterval(pollRef.current)
@@ -35,54 +50,54 @@ export default function MobilePay() {
         if (pollRef.current) clearInterval(pollRef.current)
       }
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        setError(err.message || '获取单据失败')
-      } else {
-        const message = err instanceof Error ? err.message : String(err)
-        setError('网络连接超时: ' + message)
-      }
+      if (err instanceof ApiError) setError(err.message || '获取订单失败')
+      else setError('网络连接异常，请稍后重试')
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    fetchInfo()
-    pollRef.current = setInterval(fetchInfo, 5000)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
   }, [orderNo])
 
-  // 倒计时
+  useEffect(() => {
+    if (!orderNo) return
+    const initialFetch = setTimeout(fetchInfo, 0)
+    pollRef.current = setInterval(fetchInfo, 5000)
+    return () => {
+      clearTimeout(initialFetch)
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [orderNo, fetchInfo])
+
   useEffect(() => {
     if (!info?.expireAt || info.status !== 'pending') return
-    const timer = setInterval(() => {
+    const update = () => {
       const diff = new Date(info.expireAt!).getTime() - Date.now()
       if (diff <= 0) {
         setCountdown('已过期')
-        clearInterval(timer)
         fetchInfo()
-        return
+        return false
       }
       const mins = Math.floor(diff / 60000)
       const secs = Math.floor((diff % 60000) / 1000)
       setCountdown(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`)
+      return true
+    }
+    update()
+    const timer = setInterval(() => {
+      if (!update()) clearInterval(timer)
     }, 1000)
     return () => clearInterval(timer)
-  }, [info?.expireAt, info?.status])
+  }, [info?.expireAt, info?.status, fetchInfo])
 
-  // Socket.IO 实时推送
   const handleWsStatus = useCallback((status: string) => {
     if (status === 'paid' || status === 'refunded' || status === 'failed') {
       if (pollRef.current) clearInterval(pollRef.current)
       fetchInfo()
     }
-  }, [])
+  }, [fetchInfo])
   useOrderStatus(orderNo, handleWsStatus)
 
   const handleConfirmPay = async () => {
-    if (!info) return
+    if (!info || paying || info.status !== 'pending') return
     setPaying(true)
     try {
       await api.post('/native-pay/sandbox-confirm', {
@@ -93,150 +108,132 @@ export default function MobilePay() {
       setPaidSuccess(true)
       if (pollRef.current) clearInterval(pollRef.current)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : '无法通过存管网关核对'
-      alert('支付鉴权驳回: ' + message)
+      toast.error(`支付失败：${err instanceof Error ? err.message : '订单暂时无法支付'}`)
     } finally {
       setPaying(false)
     }
   }
 
+  if (!orderNo) {
+    return <MobileError message="付款链接缺少订单号，请回到电脑端重新扫码" />
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center font-sans">
-        <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin mb-4" />
-        <p className="text-xs text-neutral-400 font-mono tracking-widest uppercase">Sandbox Pay H5 Checkout Initializing...</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+        <BrandMark size="lg" />
+        <RefreshCw className="mt-6 h-5 w-5 animate-spin text-emerald-600 dark:text-emerald-400" />
+        <p className="mt-3 text-xs text-[#888]">正在安全加载订单…</p>
       </div>
     )
   }
 
-  if (error || !info) {
-    return (
-      <div className="min-h-screen bg-neutral-950 text-white p-6 flex flex-col items-center justify-center text-center font-sans">
-        <AlertCircle className="w-12 h-12 text-rose-500 mb-4 animate-bounce" />
-        <h2 className="text-lg font-bold text-neutral-200 mb-2">订单状态解析异常</h2>
-        <p className="text-xs text-neutral-400 max-w-xs leading-relaxed mb-6">{error || '未能找到对应的待支付账单，请返回电脑端重新生成扫码'}</p>
-        <Button
-          onPress={() => window.close()}
-          className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 rounded-2xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>关闭本页</span>
-        </Button>
-      </div>
-    )
-  }
+  if (error || !info) return <MobileError message={error || '未找到对应订单'} />
+
+  const unavailable = info.status === 'expired' || info.status === 'failed'
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white font-sans flex flex-col">
-      {/* 顶部安全标识条 */}
-      <header className="px-5 py-4 border-b border-neutral-800/80 bg-neutral-900/60 backdrop-blur-md flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
-            <Zap className="w-4 h-4 fill-current" />
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-black/[0.04] bg-white/95 backdrop-blur-lg dark:border-white/10 dark:bg-[#181c19]/95">
+        <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
+          <button type="button" onClick={closePage} aria-label="返回" className="flex h-8 w-8 items-center justify-center rounded-lg text-[#555] hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/5">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <BrandMark size="sm" className="!h-7 !w-7 !rounded-lg" />
+            WePay
           </div>
-          <span className="font-bold text-sm tracking-tight text-white font-mono">Sandbox Pay Mobile Escrow</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>存管直连</span>
+          <span className="flex h-8 w-8 items-center justify-center text-emerald-600 dark:text-emerald-400"><ShieldCheck className="h-[18px] w-[18px]" /></span>
         </div>
       </header>
 
-      {/* 主界面内容 */}
-      <main className="flex-1 px-5 py-8 max-w-md mx-auto w-full flex flex-col justify-center space-y-6">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-5">
+        <div className="mb-4 rounded-lg bg-[#fff7e6] px-3 py-2.5 text-[11px] leading-5 text-[#b26b00] dark:bg-amber-400/10 dark:text-amber-200">
+          沙箱测试付款，不会产生真实资金扣款
+        </div>
+
         {paidSuccess ? (
-          <Card className="bg-neutral-900/80 border border-emerald-500/30 rounded-3xl shadow-2xl shadow-emerald-500/10 animate-scale-up">
-            <Card.Content className="p-8 text-center space-y-6">
-              <div className="w-20 h-20 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto shadow-[0_0_40px_#34d399] animate-bounce">
-                <Check className="w-10 h-10 stroke-[3]" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-2xl font-black text-white tracking-tight">支付状态已更新（沙箱模拟）</h2>
-                <p className="text-xs text-neutral-400 leading-relaxed">
-                  电脑端 PC 收银台正在自动抓取状态通知...<br />
-                  <span className="text-emerald-400 font-bold mt-1 inline-block">您现在可以查看电脑屏幕的实时跳转！</span>
-                </p>
-              </div>
-              <div className="pt-4 border-t border-neutral-800/80 font-mono text-neutral-500 text-[10px] flex items-center justify-center gap-1">
-                <Lock className="w-3 h-3 text-emerald-500" />
-                <span>沙箱测试环境 · 不涉及真实资金</span>
-              </div>
-            </Card.Content>
-          </Card>
+          <section className="rounded-xl bg-white px-6 py-9 text-center shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:bg-[#181c19]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-600 text-white">
+              <Check className="h-8 w-8 stroke-[3]" />
+            </div>
+            <h1 className="mt-5 text-xl font-semibold">支付成功</h1>
+            <p className="mt-2 text-xs text-[#888] dark:text-slate-400">支付结果已同步至电脑端收银台</p>
+            <div className="mt-6 text-[36px] font-semibold tracking-tight tabular-nums">
+              <span className="mr-1 text-xl">¥</span>{info.amount.toFixed(2)}
+            </div>
+            <div className="mt-7 border-t border-[#ededed] pt-5 text-xs dark:border-white/10">
+              <div className="flex justify-between gap-6 py-1.5"><span className="text-[#888]">商品</span><span className="text-right font-medium">{info.productName}</span></div>
+              <div className="flex justify-between gap-6 py-1.5"><span className="text-[#888]">订单号</span><span className="truncate font-mono text-[10px]">{info.orderNo}</span></div>
+            </div>
+            <button type="button" onClick={closePage} className="mt-7 h-11 w-full rounded-lg bg-emerald-600 text-sm font-semibold text-white active:bg-emerald-700">完成</button>
+          </section>
+        ) : unavailable ? (
+          <section className="rounded-xl bg-white px-6 py-10 text-center dark:bg-[#181c19]">
+            <AlertCircle className="mx-auto h-12 w-12 text-[#fa9d3b]" />
+            <h1 className="mt-4 text-lg font-semibold">{info.status === 'expired' ? '订单已过期' : '订单暂时无法支付'}</h1>
+            <p className="mt-2 text-xs leading-5 text-[#888]">请关闭当前页面，并在电脑端重新发起付款。</p>
+            <button type="button" onClick={closePage} className="mt-6 h-11 w-full rounded-lg border border-[#dcdcdc] text-sm font-medium dark:border-white/15">关闭页面</button>
+          </section>
         ) : (
-          <Card className="bg-neutral-900/80 border border-neutral-800 rounded-3xl shadow-xl relative overflow-hidden">
-            <Card.Content className="p-6 space-y-6">
-              <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-              {/* 收款方抬头 */}
-              <div className="text-center space-y-2 pb-6 border-b border-neutral-800 relative z-10">
-                <div className="text-xs text-neutral-400 font-medium">向测试商户支付（沙箱）</div>
-                <div className="text-3xl font-black text-white font-mono tracking-tight text-emerald-400">
-                  ¥ {info.amount.toFixed(2)}
-                </div>
-                <div className="text-xs text-neutral-300 font-medium truncate px-4">{info.productName}</div>
-                {/* 倒计时 */}
-                {countdown && info.status === 'pending' && (
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400 font-mono">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>支付剩余 {countdown}</span>
-                  </div>
-                )}
+          <section className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:bg-[#181c19]">
+            <div className="px-6 pb-7 pt-8 text-center">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <WalletCards className="h-5 w-5" />
               </div>
-
-              {/* 交易详情项 */}
-              <div className="space-y-3.5 text-xs text-neutral-300 font-mono relative z-10">
-                <div className="flex items-center justify-between py-1 border-b border-neutral-800/60">
-                  <span className="text-neutral-500 font-sans font-medium">收款机构</span>
-                  <span className="text-white font-bold">Sandbox Pay 测试商户（沙箱）</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-neutral-800/60">
-                  <span className="text-neutral-500 font-sans font-medium">清算单号</span>
-                  <span className="text-neutral-300 truncate max-w-[180px]">{info.orderNo}</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-neutral-800/60">
-                  <span className="text-neutral-500 font-sans font-medium">模拟账户</span>
-                  <span className="text-emerald-400 font-bold flex items-center gap-1">
-                    <Smartphone className="w-3.5 h-3.5" />
-                    <span>钱包沙箱测试专户</span>
-                  </span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-neutral-800/60">
-                  <span className="text-neutral-500 font-sans font-medium">账户余额</span>
-                  <span className="text-neutral-200">¥ 88,888.00 (无风险额度)</span>
-                </div>
+              <p className="mt-3 text-xs text-[#888]">向 WePay 测试商户付款</p>
+              <div className="mt-3 text-[38px] font-semibold tracking-tight tabular-nums">
+                <span className="mr-1 text-xl">¥</span>{info.amount.toFixed(2)}
               </div>
+              <p className="mt-2 truncate text-[13px] font-medium">{info.productName}</p>
+              {countdown && (
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-[#fa9d3b]">
+                  <Clock3 className="h-3.5 w-3.5" /> 请在 {countdown} 内完成付款
+                </p>
+              )}
+            </div>
 
-              {/* 支付按钮 */}
-              <div className="pt-4 relative z-10 space-y-3">
-                <Button
-                  isDisabled={paying}
-                  onPress={handleConfirmPay}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 active:scale-98 text-white font-bold rounded-2xl text-sm transition-all shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 tracking-wider font-sans uppercase"
-                >
-                  {paying ? (
-                    <RefreshCw className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Zap className="w-4 h-4 fill-current" />
-                      <span>确认验证并付款 ¥ {info.amount.toFixed(2)}</span>
-                    </>
-                  )}
-                </Button>
-                <div className="text-[10px] text-center text-neutral-500 flex items-center justify-center gap-1.5 font-mono">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>沙箱环境 · 支付结果为模拟数据</span>
-                </div>
+            <div className="border-t border-[#ededed] px-5 py-2 dark:border-white/10">
+              <div className="flex items-center justify-between py-3.5 text-[13px]">
+                <span className="text-[#888]">支付方式</span>
+                <span className="flex items-center gap-2 font-medium"><BrandMark size="sm" className="!h-6 !w-6 !rounded-md" /> Sandbox 钱包 <ChevronRight className="h-4 w-4 text-[#bbb]" /></span>
               </div>
-            </Card.Content>
-          </Card>
+              <div className="flex items-center justify-between border-t border-[#ededed] py-3.5 text-[13px] dark:border-white/10">
+                <span className="text-[#888]">订单号</span>
+                <span className="max-w-[220px] truncate font-mono text-[10px]">{info.orderNo}</span>
+              </div>
+            </div>
+
+            <div className="px-5 pb-5 pt-4">
+              <button
+                type="button"
+                disabled={paying}
+                onClick={handleConfirmPay}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-[15px] font-semibold text-white transition-colors active:bg-emerald-700 disabled:opacity-60"
+              >
+                {paying ? <RefreshCw className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />}
+                {paying ? '正在支付…' : '立即支付'}
+              </button>
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-[#aaa]"><ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> WePay 安全支付</p>
+            </div>
+          </section>
         )}
       </main>
 
-      {/* 底部 */}
-      <footer className="py-6 text-center text-[10px] text-neutral-600 font-mono border-t border-neutral-900 bg-neutral-950">
-        Sandbox Pay Mobile H5 Checkout &copy; {new Date().getFullYear()}<br />Financial Grade Clearness
-      </footer>
+      <footer className="pb-5 text-center text-[10px] text-[#aaa]">本页面仅用于沙箱支付流程测试</footer>
+    </div>
+  )
+}
+
+function MobileError({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-5 text-foreground">
+      <div className="w-full max-w-sm rounded-xl bg-white px-6 py-9 text-center dark:bg-[#181c19]">
+        <AlertCircle className="mx-auto h-12 w-12 text-[#fa5151]" />
+        <h1 className="mt-4 text-lg font-semibold">无法打开付款页面</h1>
+        <p className="mt-2 text-xs leading-5 text-[#888]">{message}</p>
+        <button type="button" onClick={closePage} className="mt-6 h-11 w-full rounded-lg border border-[#dcdcdc] text-sm font-medium dark:border-white/15">关闭页面</button>
+      </div>
     </div>
   )
 }

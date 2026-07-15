@@ -27,7 +27,7 @@ export default function RefundDialog({
     <Modal>
       <Modal.Backdrop isOpen={!!target} onOpenChange={(open) => !open && onClose()} variant="blur">
         <Modal.Container size="md">
-          <Modal.Dialog className="bg-background border border-border shadow-2xl rounded-2xl p-6">
+          <Modal.Dialog className="rounded-xl border border-border bg-surface p-6 shadow-[0_18px_50px_rgba(0,0,0,0.12)]">
             <Modal.CloseTrigger />
             <Modal.Header className="flex flex-col items-start gap-1 text-left pb-4">
               <Modal.Heading className="text-base font-semibold text-foreground tracking-tight flex items-center gap-2">
