@@ -10,7 +10,7 @@
 FROM node:22-alpine AS build-client
 WORKDIR /app
 RUN npm install -g pnpm
-COPY client/package.json client/pnpm-lock.yaml* ./
+COPY client/package.json client/pnpm-lock.yaml* client/.npmrc* ./
 RUN pnpm install
 COPY client/ .
 RUN pnpm build
@@ -19,7 +19,7 @@ RUN pnpm build
 FROM node:22-alpine AS build-server
 WORKDIR /app
 RUN npm install -g pnpm
-COPY server/package.json server/pnpm-lock.yaml* ./
+COPY server/package.json server/pnpm-lock.yaml* server/.npmrc* ./
 RUN pnpm install
 COPY server/ .
 RUN pnpm build
