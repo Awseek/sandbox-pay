@@ -20,11 +20,11 @@ export class OrderCleanupTask {
       .createQueryBuilder()
       .update(PaymentOrder)
       .set({ status: OrderStatus.Expired })
-      .where('status = :status AND expireAt < :now', {
-        status: OrderStatus.Pending,
-        now,
-      })
-      .limit(1000)
+      .where(`"id" IN (
+        SELECT "id" FROM "payment_orders"
+        WHERE "status" = :status AND "expireAt" < :now
+        LIMIT 1000
+      )`, { status: OrderStatus.Pending, now })
       .execute();
 
     if (result.affected && result.affected > 0) {
