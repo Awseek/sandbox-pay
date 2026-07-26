@@ -9,20 +9,18 @@
 # ── Stage 1: 构建前端 ──
 FROM node:22-alpine AS build-client
 WORKDIR /app
-RUN npm install -g pnpm
-COPY client/package.json client/pnpm-lock.yaml* client/.npmrc* ./
-RUN pnpm install --config.onlyBuiltDependencies=*
+COPY client/package.json client/pnpm-lock.yaml* ./
+RUN corepack enable && pnpm install --frozen-lockfile || npm install
 COPY client/ .
-RUN pnpm build
+RUN npx vite build
 
 # ── Stage 2: 构建后端 ──
 FROM node:22-alpine AS build-server
 WORKDIR /app
-RUN npm install -g pnpm
-COPY server/package.json server/pnpm-lock.yaml* server/.npmrc* ./
-RUN pnpm install --config.onlyBuiltDependencies=*
+COPY server/package.json server/pnpm-lock.yaml* ./
+RUN corepack enable && pnpm install --frozen-lockfile || npm install
 COPY server/ .
-RUN pnpm build
+RUN npx nest build
 
 # ── Stage 3: 运行时（Node + PostgreSQL）──
 FROM node:22-bookworm-slim
@@ -30,15 +28,14 @@ FROM node:22-bookworm-slim
 RUN apt-get update && \
     apt-get install -y --no-install-recommends postgresql postgresql-client curl && \
     rm -rf /var/lib/apt/lists/* && \
-    npm install -g pnpm && \
     mkdir -p /var/lib/postgresql/data /var/log/postgresql && \
     chown -R postgres:postgres /var/lib/postgresql /var/log/postgresql
 
 WORKDIR /app
 
-COPY --from=build-server /app/server/dist ./server/dist
-COPY --from=build-server /app/server/node_modules ./server/node_modules
-COPY --from=build-server /app/server/package.json ./server/
+COPY --from=build-server /app/dist ./server/dist
+COPY --from=build-server /app/node_modules ./server/node_modules
+COPY --from=build-server /app/package.json ./server/
 COPY --from=build-client /app/dist ./client
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
