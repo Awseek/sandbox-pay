@@ -65,8 +65,6 @@ ENV ENABLE_SANDBOX=true
 
 EXPOSE 3000
 
-VOLUME ["/var/lib/postgresql/data"]
-
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -f http://localhost:3000/health || exit 1
 
