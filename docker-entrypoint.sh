@@ -11,13 +11,14 @@ export ENCRYPTION_KEY="${ENCRYPTION_KEY:-$(generate_secret)}"
 
 # ── PostgreSQL 路径 ──
 PG_BIN="/usr/lib/postgresql/15/bin"
-PGDATA="/var/lib/postgresql/data"
+PG_VOLUME="/var/lib/postgresql/data"
+PGDATA="$PG_VOLUME/pgdata"
 
 # 初始化数据库（仅首次）
 if [ ! -f "$PGDATA/PG_VERSION" ]; then
   echo "[entrypoint] Initializing PostgreSQL..."
   mkdir -p "$PGDATA"
-  chown -R postgres:postgres "$PGDATA"
+  chown -R postgres:postgres "$PG_VOLUME"
   su - postgres -c "$PG_BIN/initdb -D $PGDATA --encoding=UTF8 --locale=C"
 
   cat > "$PGDATA/pg_hba.conf" <<EOF
