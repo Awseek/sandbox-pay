@@ -1,24 +1,21 @@
 # ═══════════════════════════════════════════════════════════
 #  Sandbox Pay — 一键部署 Dockerfile
 #  内置 PostgreSQL，零外部依赖
-#
-#  docker build -t sandbox-pay .
-#  docker run -d -p 3000:3000 -v pg-data:/var/lib/postgresql/data sandbox-pay
 # ═══════════════════════════════════════════════════════════
 
 # ── Stage 1: 构建前端 ──
 FROM node:22-alpine AS build-client
 WORKDIR /app
-COPY client/package.json client/pnpm-lock.yaml* ./
-RUN corepack enable && pnpm install --frozen-lockfile || npm install
+COPY client/package.json ./
+RUN npm install
 COPY client/ .
 RUN npx vite build
 
 # ── Stage 2: 构建后端 ──
 FROM node:22-alpine AS build-server
 WORKDIR /app
-COPY server/package.json server/pnpm-lock.yaml* ./
-RUN corepack enable && pnpm install --frozen-lockfile || npm install
+COPY server/package.json ./
+RUN npm install
 COPY server/ .
 RUN npx nest build
 
