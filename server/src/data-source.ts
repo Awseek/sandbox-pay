@@ -29,7 +29,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_DATABASE || 'sandbox_pay',
   entities: [User, Merchant, PaymentOrder, NotifyQueue, ReconciliationRecord, AuditLog, SiteSetting, NonceRecord],
-  migrations: [__dirname.endsWith('/dist') ? 'migrations/*.js' : 'src/migrations/*.ts'],
+  migrations: [__dirname.endsWith('/dist') ? __dirname + '/migrations/*.js' : 'src/migrations/*.ts'],
   migrationsTableName: 'typeorm_migrations',
   synchronize: false,
   logging: false,
