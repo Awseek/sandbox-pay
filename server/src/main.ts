@@ -60,6 +60,12 @@ async function bootstrap() {
   // Security headers (X-Content-Type-Options, X-Frame-Options, HSTS, CSP, etc.)
   app.use(helmet());
 
+  // Raw health endpoint — bypasses NestJS URI versioning for Railway healthchecks
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/health', (_req: any, res: any) => {
+    res.json({ status: 'ok', redis: 'connected' });
+  });
+
   // Swagger is opt-in. Keep interface details off public deployments by default;
   // the authenticated client console contains the merchant integration guide.
   if (process.env.ENABLE_API_DOCS === 'true') {
