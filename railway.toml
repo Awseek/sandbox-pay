@@ -5,4 +5,4 @@ method = "docker"
 name = "server"
 
 [deploy]
-healthcheckPath = "/v1/health"
+healthcheckPath = "/health"
