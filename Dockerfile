@@ -17,7 +17,7 @@ WORKDIR /app
 COPY server/package.json ./
 RUN npm install
 COPY server/ .
-RUN npx nest build
+RUN rm -rf dist && npx nest build
 
 # ── Stage 3: 运行时（Node + PostgreSQL）──
 FROM node:22-bookworm-slim
