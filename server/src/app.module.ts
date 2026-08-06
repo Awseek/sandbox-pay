@@ -60,7 +60,7 @@ import { CorrelationIdMiddleware } from './common/middleware/correlation-id.midd
       }),
     }),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'client'),
+      rootPath: join(__dirname, '..', '..', 'client'),
       exclude: ['/v1/api/{*path}', '/api/{*path}', '/health', '/socket.io/{*path}'],
     }),
     CommonModule,
